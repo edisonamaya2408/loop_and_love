@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: loop_and_love_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d loop_and_love_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      APP_ENV: testing
+      FLASK_ENV: testing
+
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/loop_and_love_test
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/loop_and_love_test
+
+      SECRET_KEY: ci-secret-key-012345678901234567890123456789
+      JWT_SECRET_KEY: ci-jwt-secret-key-012345678901234567890123456789
+      JWT_ACCESS_TOKEN_EXPIRES_MINUTES: "60"
+
+      CORS_ORIGINS: http://localhost:5000
+
+      STORAGE_PROVIDER: local
+      SUPABASE_STORAGE_BUCKET: products
+
+      MAX_IMAGE_SIZE_MB: "5"
+      MAX_UPLOAD_REQUEST_OVERHEAD_MB: "1"
+
+      LOG_LEVEL: WARNING
+
+      RATELIMIT_STORAGE_URI: memory://
+      RATELIMIT_STRATEGY: sliding-window-counter
+      RATELIMIT_KEY_PREFIX: loop_and_love_ci
+
+      TRUSTED_PROXY_COUNT: "0"
+
+      SQLALCHEMY_POOL_SIZE: "2"
+      SQLALCHEMY_MAX_OVERFLOW: "0"
+      SQLALCHEMY_POOL_TIMEOUT: "10"
+      SQLALCHEMY_POOL_RECYCLE: "1800"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.13.7
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.7"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Verify installed dependencies
+        run: python -m pip check
+
+      - name: Apply database migrations
+        run: python -m flask --app run:app db upgrade
+
+      - name: Run test suite
+        run: python -m pytest -q
