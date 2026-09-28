@@ -63,11 +63,6 @@ jobs:
 
       TRUSTED_PROXY_COUNT: "0"
 
-      SQLALCHEMY_POOL_SIZE: "2"
-      SQLALCHEMY_MAX_OVERFLOW: "0"
-      SQLALCHEMY_POOL_TIMEOUT: "10"
-      SQLALCHEMY_POOL_RECYCLE: "1800"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -87,6 +82,35 @@ jobs:
 
       - name: Apply database migrations
         run: python -m flask --app run:app db upgrade
+
+      - name: Seed CI administrator required by unit tests
+        run: |
+          python - <<'PY'
+          from app import create_app
+          from app.extensions import db
+          from app.infrastructure.database.models.admin_user_model import AdminUser
+          from app.infrastructure.security.password_service import PasswordService
+
+          app = create_app("testing")
+
+          with app.app_context():
+              existing = db.session.query(AdminUser).filter_by(
+                  email="admin@loopandlove.com"
+              ).first()
+
+              if existing is None:
+                  db.session.add(
+                      AdminUser(
+                          email="admin@loopandlove.com",
+                          password_hash=PasswordService.hash_password(
+                              "Password123!"
+                          ),
+                          is_active=True,
+                          token_version=0,
+                      )
+                  )
+                  db.session.commit()
+          PY
 
       - name: Run test suite
         run: python -m pytest -q
