@@ -1,0 +1,313 @@
+{% extends "admin/base.html" %}
+
+
+{% block title %}
+Loop & Love | Categorías
+{% endblock %}
+
+
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/admin-categories.css'
+    ) }}">
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="admin-page-header">
+
+    <div>
+
+        <span class="eyebrow">
+            CATÁLOGO
+        </span>
+
+        <h1>
+            Categorías
+        </h1>
+
+        <p>
+            Organiza los productos del catálogo y controla
+            qué categorías están disponibles para los clientes.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="admin-categories-layout">
+
+
+    <article class="admin-panel admin-categories-create">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    NUEVA CATEGORÍA
+                </span>
+
+                <h2>
+                    Crear categoría
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <p class="admin-panel__description">
+            El slug se genera automáticamente a partir
+            del nombre de la categoría.
+        </p>
+
+
+        <form id="admin-category-create-form" class="admin-categories-form" novalidate>
+
+            <div class="admin-categories-field">
+
+                <label for="new-category-name">
+                    Nombre
+                </label>
+
+                <input type="text" id="new-category-name" name="name" maxlength="100" autocomplete="off"
+                    placeholder="Ej. Amigurumis" required>
+
+            </div>
+
+
+            <div id="admin-category-create-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+            <button type="submit" class="admin-categories-button admin-categories-button--primary"
+                id="admin-category-create-submit">
+
+                <span id="admin-category-create-submit-label">
+                    Crear categoría
+                </span>
+
+            </button>
+
+        </form>
+
+    </article>
+
+
+    <article class="admin-panel admin-categories-list-panel">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    CATÁLOGO
+                </span>
+
+                <h2>
+                    Categorías registradas
+                </h2>
+
+            </div>
+
+
+            <span class="admin-categories-count" id="admin-categories-count">
+                0
+            </span>
+
+        </div>
+
+
+        <div id="admin-category-list-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+        <div class="admin-categories-table-wrapper">
+
+            <table class="admin-categories-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Categoría
+                        </th>
+
+                        <th scope="col">
+                            Slug
+                        </th>
+
+                        <th scope="col">
+                            Estado
+                        </th>
+
+                        <th scope="col">
+                            Creada
+                        </th>
+
+                        <th scope="col" class="admin-categories-table__actions-column">
+                            Acciones
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="admin-categories-table-body">
+                </tbody>
+
+            </table>
+
+
+            <div class="admin-categories-empty" id="admin-categories-empty" hidden>
+
+                <span class="admin-categories-empty__icon" aria-hidden="true">
+                    ◌
+                </span>
+
+                <strong>
+                    No hay categorías registradas.
+                </strong>
+
+                <small>
+                    Crea la primera categoría desde el formulario.
+                </small>
+
+            </div>
+
+
+            <div class="admin-categories-loading" id="admin-categories-loading">
+                Cargando categorías...
+            </div>
+
+        </div>
+
+    </article>
+
+</section>
+
+
+<div class="admin-categories-modal" id="admin-categories-modal" hidden aria-hidden="true">
+
+    <div class="admin-categories-modal__backdrop" data-category-modal-close></div>
+
+
+    <section class="admin-categories-modal__dialog" role="dialog" aria-modal="true"
+        aria-labelledby="admin-category-modal-title">
+
+        <div class="admin-categories-modal__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    CATEGORÍA
+                </span>
+
+                <h2 id="admin-category-modal-title">
+                    Editar categoría
+                </h2>
+
+            </div>
+
+
+            <button type="button" class="admin-categories-modal__close" id="admin-category-modal-close"
+                aria-label="Cerrar ventana">
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="admin-category-edit-form" class="admin-categories-form" novalidate>
+
+            <input type="hidden" id="edit-category-id">
+
+
+            <div class="admin-categories-field">
+
+                <label for="edit-category-name">
+                    Nombre
+                </label>
+
+                <input type="text" id="edit-category-name" maxlength="100" autocomplete="off" required>
+
+            </div>
+
+
+            <div class="admin-categories-field">
+
+                <label for="edit-category-slug">
+                    Slug generado
+                </label>
+
+                <input type="text" id="edit-category-slug" readonly>
+
+            </div>
+
+
+            <div class="admin-categories-field">
+
+                <label for="edit-category-status">
+                    Estado
+                </label>
+
+                <select id="edit-category-status" required>
+
+                    <option value="true">
+                        Activa
+                    </option>
+
+                    <option value="false">
+                        Inactiva
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div id="admin-category-edit-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+            <div class="admin-categories-modal__actions">
+
+                <button type="button" class="admin-categories-button admin-categories-button--secondary"
+                    id="admin-category-edit-cancel">
+                    Cancelar
+                </button>
+
+
+                <button type="submit" class="admin-categories-button admin-categories-button--primary"
+                    id="admin-category-edit-submit">
+
+                    <span id="admin-category-edit-submit-label">
+                        Guardar cambios
+                    </span>
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/admin-categories.js'
+    ) }}" defer></script>
+
+{% endblock %}

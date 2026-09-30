@@ -1,0 +1,336 @@
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta name="theme-color" content="#FCF7F2">
+
+    <meta name="description" content="Loop & Love | Administración">
+
+    <link rel="icon" href="{{ url_for(
+            'static',
+            filename='images/logo.png'
+        ) }}" type="image/png">
+
+    <title>
+        {% block title %}
+        Loop & Love | Administración
+        {% endblock %}
+    </title>
+
+
+    <link rel="stylesheet" href="{{ url_for(
+            'static',
+            filename='css/app.css'
+        ) }}">
+
+    <link rel="stylesheet" href="{{ url_for(
+            'static',
+            filename='css/admin.css'
+        ) }}">
+
+    {% block head %}
+    {% endblock %}
+
+</head>
+
+
+<body class="admin-body">
+
+    <div class="admin-shell" id="admin-shell">
+
+
+        <aside class="admin-sidebar" id="admin-sidebar" aria-label="Navegación administrativa">
+
+            <div class="admin-sidebar__brand">
+
+                <a href="{{ url_for(
+                        'web.admin_dashboard'
+                    ) }}" class="admin-brand">
+
+                    <img src="{{ url_for(
+                            'static',
+                            filename='images/logo.png'
+                        ) }}" alt="Loop & Love" class="admin-brand__logo">
+
+                    <span class="admin-brand__label">
+                        Administración
+                    </span>
+
+                </a>
+
+            </div>
+
+
+            <nav class="admin-nav" aria-label="Menú administrativo">
+
+                <a class="
+                        admin-nav__item
+                        {% if request.path == url_for('web.admin_dashboard') %}
+                        admin-nav__item--active
+                        {% endif %}
+                    " href="{{ url_for(
+                        'web.admin_dashboard'
+                    ) }}">
+
+                    <span class="admin-nav__icon" aria-hidden="true">
+                        ⌂
+                    </span>
+
+                    <span>
+                        Dashboard
+                    </span>
+
+                </a>
+
+
+                <div class="admin-nav__group">
+
+                    <span class="admin-nav__section">
+                        CATÁLOGO
+                    </span>
+
+
+                    <a href="{{ url_for(
+                            'web.admin_products_page'
+                        ) }}" class="
+                            admin-nav__item
+                            {% if request.path == url_for('web.admin_products_page') %}
+                            admin-nav__item--active
+                            {% endif %}
+                        ">
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ◇
+                        </span>
+
+                        <span>
+                            Productos
+                        </span>
+
+                    </a>
+
+
+                    <a href="{{ url_for(
+                            'web.admin_categories_page'
+                        ) }}" class="
+                            admin-nav__item
+                            {% if request.path == url_for('web.admin_categories_page') %}
+                            admin-nav__item--active
+                            {% endif %}
+                        ">
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ◌
+                        </span>
+
+                        <span>
+                            Categorías
+                        </span>
+
+                    </a>
+
+                </div>
+
+
+                <div class="admin-nav__group">
+
+                    <span class="admin-nav__section">
+                        ADMINISTRACIÓN
+                    </span>
+
+
+                    <a href="{{ url_for(
+                            'web.admin_users_page'
+                        ) }}" class="
+                            admin-nav__item
+                            {% if request.path == url_for('web.admin_users_page') %}
+                            admin-nav__item--active
+                            {% endif %}
+                        ">
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ◉
+                        </span>
+
+                        <span>
+                            Usuarios
+                        </span>
+
+                    </a>
+
+                </div>
+
+
+                <div class="admin-nav__group">
+
+                    <span class="admin-nav__section">
+                        PEDIDOS
+                    </span>
+
+
+                    <button type="button" class="
+                            admin-nav__item
+                            admin-nav__item--disabled
+                        " disabled>
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ♡
+                        </span>
+
+                        <span>
+                            Pedidos
+                        </span>
+
+                        <small>
+                            Próximo
+                        </small>
+
+                    </button>
+
+                </div>
+
+
+                <div class="admin-nav__group">
+
+                    <span class="admin-nav__section">
+                        COMUNICACIÓN
+                    </span>
+
+
+                    <button type="button" class="
+                            admin-nav__item
+                            admin-nav__item--disabled
+                        " disabled>
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ☎
+                        </span>
+
+                        <span>
+                            WhatsApp
+                        </span>
+
+                        <small>
+                            Próximo
+                        </small>
+
+                    </button>
+
+                </div>
+
+            </nav>
+
+
+            <div class="admin-sidebar__footer">
+
+                <a href="{{ url_for(
+                        'web.public_home'
+                    ) }}" class="admin-sidebar__public-link">
+                    Ver portal B2B
+                </a>
+
+
+                <button type="button" id="logout-button-sidebar" class="admin-logout">
+                    Cerrar sesión
+                </button>
+
+            </div>
+
+        </aside>
+
+
+        <div class="admin-overlay" id="admin-overlay" hidden></div>
+
+
+        <section class="admin-content">
+
+
+            <header class="admin-topbar">
+
+                <button type="button" class="admin-menu-toggle" id="admin-menu-toggle" aria-label="Abrir menú"
+                    aria-controls="admin-sidebar" aria-expanded="false">
+
+                    <span></span>
+                    <span></span>
+                    <span></span>
+
+                </button>
+
+
+                <div class="admin-topbar__brand">
+
+                    <img src="{{ url_for(
+                            'static',
+                            filename='images/logo.png'
+                        ) }}" alt="Loop & Love">
+
+                </div>
+
+
+                <div class="admin-topbar__actions">
+
+                    <div class="admin-user-chip">
+
+                        <span class="admin-user-chip__avatar" aria-hidden="true">
+                            L
+                        </span>
+
+                        <span class="admin-user-chip__email" id="admin-user-email">
+                            Administrador
+                        </span>
+
+                    </div>
+
+
+                    <button type="button" class="admin-topbar__logout" id="logout-button-topbar">
+                        Salir
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <main class="admin-main">
+
+                {% block content %}
+                {% endblock %}
+
+            </main>
+
+
+            <footer class="admin-footer">
+
+                <span>
+                    Loop & Love
+                </span>
+
+                <span>
+                    Administración
+                </span>
+
+            </footer>
+
+        </section>
+
+    </div>
+
+
+    <script src="{{ url_for(
+            'static',
+            filename='js/admin.js'
+        ) }}" defer></script>
+
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+
+</html>

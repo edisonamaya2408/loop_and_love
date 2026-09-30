@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Loop & Love | Catálogo
+{% endblock %}
+
+
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/catalog.css'
+    ) }}">
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/cart.css'
+    ) }}">
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/order.css'
+    ) }}">
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="catalog-hero">
+
+    <div class="catalog-hero__content">
+
+        <span class="eyebrow">
+            LOOP & LOVE
+        </span>
+
+        <h1>
+            Encuentra
+            <span>
+                algo hecho con amor.
+            </span>
+        </h1>
+
+        <p>
+            Explora nuestro catálogo de productos
+            hechos a mano y encuentra la pieza ideal
+            para ti o para tus clientes.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="catalog-layout" id="catalogo">
+
+    <div class="content-container">
+
+
+        <div class="catalog-toolbar">
+
+            <div>
+
+                <span class="eyebrow">
+                    CATÁLOGO
+                </span>
+
+                <h2>
+                    Productos
+                </h2>
+
+            </div>
+
+
+            <button type="button" class="catalog-filter-toggle" id="catalog-filter-toggle"
+                aria-controls="catalog-filters" aria-expanded="true">
+                Filtros
+            </button>
+
+        </div>
+
+
+        <div class="catalog-content">
+
+
+            <aside class="catalog-filters" id="catalog-filters">
+
+                <div class="catalog-filters__header">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            FILTRAR
+                        </span>
+
+                        <h3>
+                            Encuentra lo que buscas
+                        </h3>
+
+                    </div>
+
+                </div>
+
+
+                <form class="catalog-filter-form" id="catalog-filter-form" novalidate>
+
+
+                    <div class="catalog-field">
+
+                        <label for="catalog-search">
+                            Buscar
+                        </label>
+
+                        <input id="catalog-search" name="search" type="search" placeholder="Producto, referencia..."
+                            autocomplete="off">
+
+                    </div>
+
+
+                    <div class="catalog-field">
+
+                        <label for="catalog-category">
+                            Categoría
+                        </label>
+
+                        <select id="catalog-category" name="category_id">
+
+                            <option value="">
+                                Todas las categorías
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="catalog-filter-row">
+
+
+                        <div class="catalog-field">
+
+                            <label for="catalog-min-price">
+                                Precio mínimo
+                            </label>
+
+                            <input id="catalog-min-price" name="min_price" type="number" min="0" step="0.01"
+                                inputmode="decimal" placeholder="$ 0">
+
+                        </div>
+
+
+                        <div class="catalog-field">
+
+                            <label for="catalog-max-price">
+                                Precio máximo
+                            </label>
+
+                            <input id="catalog-max-price" name="max_price" type="number" min="0" step="0.01"
+                                inputmode="decimal" placeholder="$ 0">
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="catalog-filter-message" class="catalog-filter-message" hidden role="alert"
+                        aria-live="polite"></div>
+
+
+                    <button type="submit" class="
+                            button
+                            button--primary
+                            button--full
+                        " id="catalog-apply-filters">
+                        Aplicar filtros
+                    </button>
+
+
+                    <button type="reset" class="
+                            button
+                            button--secondary
+                            button--full
+                        " id="catalog-reset-filters">
+                        Limpiar filtros
+                    </button>
+
+                </form>
+
+            </aside>
+
+
+            <div class="catalog-results">
+
+
+                <div class="catalog-results__header">
+
+                    <span id="catalog-results-count">
+                        Cargando catálogo...
+                    </span>
+
+                    <span class="catalog-results__status" id="catalog-results-status">
+                        Cargando productos...
+                    </span>
+
+                </div>
+
+
+                <div class="catalog-products-grid" id="catalog-results" aria-live="polite">
+                </div>
+
+
+                <div class="catalog-loading" id="catalog-loading">
+
+                    <span class="catalog-loading__spinner" aria-hidden="true"></span>
+
+                    <span>
+                        Cargando productos...
+                    </span>
+
+                </div>
+
+
+                <div class="catalog-empty" id="catalog-empty" hidden>
+
+                    <div class="catalog-empty__icon" aria-hidden="true">
+                        ♡
+                    </div>
+
+                    <h3>
+                        No encontramos productos
+                    </h3>
+
+                    <p>
+                        No hay productos que coincidan con los
+                        filtros seleccionados. Prueba ajustando
+                        la búsqueda o limpiando los filtros.
+                    </p>
+
+                </div>
+
+
+                <div class="catalog-error" id="catalog-error" hidden role="alert">
+
+                    <div class="catalog-error__icon" aria-hidden="true">
+                        !
+                    </div>
+
+                    <h3>
+                        No pudimos cargar el catálogo
+                    </h3>
+
+                    <p id="catalog-error-message">
+                        Intenta nuevamente en unos segundos.
+                    </p>
+
+                    <button type="button" class="
+                            button
+                            button--secondary
+                        " id="catalog-retry">
+                        Intentar nuevamente
+                    </button>
+
+                </div>
+
+
+                <div class="catalog-pagination" id="catalog-pagination" hidden>
+
+                    <button type="button" class="catalog-pagination__button" id="catalog-previous" disabled>
+                        ← Anterior
+                    </button>
+
+
+                    <span class="catalog-pagination__indicator" id="catalog-page-indicator">
+                        Página 1 de 1
+                    </span>
+
+
+                    <button type="button" class="catalog-pagination__button" id="catalog-next" disabled>
+                        Siguiente →
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="pedido" class="catalog-order-info" data-whatsapp-number="{{ config.WHATSAPP_NUMBER or '' }}">
+
+    <div class="content-container">
+
+        <div class="catalog-order-card">
+
+            <div class="catalog-cart-card__header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        PEDIDO B2B
+                    </span>
+
+                    <h2>
+                        Mi pedido
+                    </h2>
+
+                </div>
+
+
+                <span class="catalog-cart-card__count" id="cart-section-count">
+                    0 productos
+                </span>
+
+            </div>
+
+
+            <p class="catalog-cart-card__description">
+                Agrega los productos que deseas solicitar.
+                El pedido se conserva en este navegador mientras
+                navegas por el catálogo.
+            </p>
+
+
+            <div class="catalog-cart-empty" id="cart-empty">
+
+                <div class="catalog-cart-empty__icon" aria-hidden="true">
+                    ♡
+                </div>
+
+                <h3>
+                    Tu pedido está vacío
+                </h3>
+
+                <p>
+                    Explora el catálogo y agrega los productos
+                    que quieras solicitar.
+                </p>
+
+                <a href="#catalogo" class="button button--primary">
+                    Explorar catálogo
+                </a>
+
+            </div>
+
+
+            <div class="catalog-cart-list" id="cart-list" hidden>
+
+                <div class="catalog-cart-items" id="cart-items"></div>
+
+
+                <div class="catalog-cart-summary">
+
+                    <span>
+                        Total estimado
+                    </span>
+
+                    <strong id="cart-total">
+                        $ 0
+                    </strong>
+
+                </div>
+
+
+                <div class="catalog-cart-actions">
+
+                    <button type="button" class="button button--secondary" id="cart-clear">
+                        Vaciar pedido
+                    </button>
+
+                </div>
+
+
+                <div class="catalog-order-request">
+
+                    <div class="catalog-order-request__header">
+
+                        <span class="eyebrow">
+                            DATOS DEL CLIENTE
+                        </span>
+
+                        <h3>
+                            Completa tu solicitud
+                        </h3>
+
+                        <p>
+                            Registra tus datos y enviaremos el pedido
+                            por WhatsApp después de validarlo en el servidor.
+                        </p>
+
+                    </div>
+
+
+                    <form class="catalog-order-form" id="catalog-order-form">
+
+                        <div class="catalog-order-form__grid">
+
+                            <div class="catalog-field">
+
+                                <label for="order-customer-name">
+                                    Nombre
+                                </label>
+
+                                <input id="order-customer-name" name="name" type="text" maxlength="150"
+                                    autocomplete="name" required>
+
+                            </div>
+
+
+                            <div class="catalog-field">
+
+                                <label for="order-customer-phone">
+                                    Teléfono
+                                </label>
+
+                                <input id="order-customer-phone" name="phone" type="tel" maxlength="30" minlength="7"
+                                    inputmode="tel" autocomplete="tel" pattern="[0-9+().\-\s]{7,30}" required>
+
+                            </div>
+
+
+                            <div class="catalog-field">
+
+                                <label for="order-customer-city">
+                                    Ciudad
+                                </label>
+
+                                <input id="order-customer-city" name="city" type="text" maxlength="100"
+                                    autocomplete="address-level2" required>
+
+                            </div>
+
+
+                            <div class="catalog-field catalog-field--full">
+
+                                <label for="order-customer-observations">
+                                    Observaciones
+                                    <span>
+                                        (opcional)
+                                    </span>
+                                </label>
+
+                                <textarea id="order-customer-observations" name="observations" maxlength="2000" rows="4"
+                                    placeholder="Indica detalles importantes para tu pedido."></textarea>
+
+                            </div>
+
+                        </div>
+
+
+                        <button type="submit" class="button button--primary button--full catalog-order-form__submit"
+                            id="order-submit">
+                            Enviar pedido por WhatsApp
+                        </button>
+
+
+                        <p class="catalog-order-form__note">
+                            El precio y el total se vuelven a validar
+                            en el servidor antes de abrir WhatsApp.
+                        </p>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+
+            <div class="catalog-order-feedback" id="order-feedback" hidden role="status" aria-live="polite">
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ==================================================
+     VISOR DE IMAGEN
+================================================== -->
+
+<div class="catalog-image-modal" id="catalog-image-modal" hidden aria-hidden="true">
+
+    <div class="catalog-image-modal__backdrop" data-catalog-image-modal-close></div>
+
+
+    <section class="catalog-image-modal__dialog" role="dialog" aria-modal="true"
+        aria-labelledby="catalog-image-modal-title">
+
+        <div class="catalog-image-modal__header">
+
+            <h2 class="catalog-image-modal__title" id="catalog-image-modal-title">
+                Producto
+            </h2>
+
+
+            <button type="button" class="catalog-image-modal__close" id="catalog-image-modal-close"
+                aria-label="Cerrar imagen">
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="catalog-image-modal__body">
+
+            <img id="catalog-image-modal-image" class="catalog-image-modal__image" src="" alt="">
+
+        </div>
+
+
+        <p class="catalog-image-modal__hint">
+            Haz clic fuera de la imagen o presiona Esc para cerrar.
+        </p>
+
+    </section>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/cart.js'
+    ) }}" defer></script>
+
+<script src="{{ url_for(
+        'static',
+        filename='js/order.js'
+    ) }}" defer></script>
+
+{% endblock %}

@@ -1,0 +1,129 @@
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta name="theme-color" content="#FCF7F2">
+
+    <meta name="description" content="Loop & Love | Catálogo">
+
+    <link rel="icon" href="{{ url_for(
+            'static',
+            filename='images/logo.png'
+        ) }}" type="image/png">
+
+    <title>
+        {% block title %}
+        Loop & Love
+        {% endblock %}
+    </title>
+
+    <link rel="stylesheet" href="{{ url_for(
+            'static',
+            filename='css/app.css'
+        ) }}">
+
+    <link rel="stylesheet" href="{{ url_for(
+            'static',
+            filename='css/public.css'
+        ) }}">
+
+    {% block head %}
+    {% endblock %}
+
+</head>
+
+<body class="public-body">
+
+    <div class="app-shell">
+
+        <header class="site-header">
+
+            <div class="site-header__inner">
+
+                <a class="brand" href="{{ url_for(
+                        'web.public_home'
+                    ) }}" aria-label="Loop & Love">
+
+                    <img class="brand__logo" src="{{ url_for(
+                            'static',
+                            filename='images/logo.png'
+                        ) }}" alt="Loop & Love">
+
+                </a>
+
+
+                {% block header_actions %}
+
+                <div class="public-header__actions">
+
+                    <a class="public-order-button" href="#pedido">
+
+                        <span class="public-order-button__icon" aria-hidden="true">
+                            ♡
+                        </span>
+
+                        <span>
+                            Mi pedido
+                        </span>
+
+                        <span class="public-order-button__count" id="cart-count">
+                            0
+                        </span>
+
+                    </a>
+
+                </div>
+
+                {% endblock %}
+
+            </div>
+
+        </header>
+
+
+        <main class="page">
+
+            {% block content %}
+            {% endblock %}
+
+        </main>
+
+
+        <footer class="site-footer">
+
+            <div class="site-footer__inner">
+
+                <img class="site-footer__logo" src="{{ url_for(
+                        'static',
+                        filename='images/logo.png'
+                    ) }}" alt="Loop & Love" loading="lazy">
+
+                <p>
+                    Hecho a mano con amor.
+                </p>
+
+            </div>
+
+        </footer>
+
+    </div>
+
+
+    <script src="{{ url_for(
+            'static',
+            filename='js/app.js'
+        ) }}" defer></script>
+
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+
+</html>

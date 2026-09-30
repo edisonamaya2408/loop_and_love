@@ -1,0 +1,357 @@
+{% extends "admin/base.html" %}
+
+
+{% block title %}
+Loop & Love | Usuarios
+{% endblock %}
+
+
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/admin-users.css'
+    ) }}">
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="admin-page-header">
+
+    <div>
+
+        <span class="eyebrow">
+            ADMINISTRACIÓN
+        </span>
+
+        <h1>
+            Usuarios
+        </h1>
+
+        <p>
+            Crea y administra las cuentas con acceso
+            al portal administrativo.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="admin-users-layout">
+
+
+    <article class="admin-panel admin-users-create">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    NUEVO ADMINISTRADOR
+                </span>
+
+                <h2>
+                    Crear usuario
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <p class="admin-panel__description">
+            El nuevo administrador podrá iniciar sesión
+            inmediatamente después de ser creado.
+        </p>
+
+
+        <form id="admin-user-create-form" class="admin-users-form" novalidate>
+
+            <div class="admin-users-field">
+
+                <label for="new-user-email">
+                    Correo electrónico
+                </label>
+
+                <input type="email" id="new-user-email" name="email" autocomplete="email" maxlength="255"
+                    placeholder="administrador@ejemplo.com" required>
+
+            </div>
+
+
+            <div class="admin-users-field">
+
+                <label for="new-user-password">
+                    Contraseña
+                </label>
+
+                <input type="password" id="new-user-password" name="password" autocomplete="new-password" minlength="8"
+                    placeholder="Mínimo 8 caracteres" required>
+
+            </div>
+
+
+            <div class="admin-users-field">
+
+                <label for="new-user-password-confirmation">
+                    Confirmar contraseña
+                </label>
+
+                <input type="password" id="new-user-password-confirmation" name="password_confirmation"
+                    autocomplete="new-password" minlength="8" placeholder="Repite la contraseña" required>
+
+            </div>
+
+
+            <div id="admin-user-create-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+            <button type="submit" class="admin-users-button admin-users-button--primary" id="admin-user-create-submit">
+
+                <span id="admin-user-create-submit-label">
+                    Crear administrador
+                </span>
+
+            </button>
+
+        </form>
+
+    </article>
+
+
+    <article class="admin-panel admin-users-list-panel">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    CUENTAS
+                </span>
+
+                <h2>
+                    Administradores registrados
+                </h2>
+
+            </div>
+
+
+            <span class="admin-users-count" id="admin-users-count">
+                0
+            </span>
+
+        </div>
+
+
+        <div id="admin-users-list-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+        <div class="admin-users-table-wrapper">
+
+            <table class="admin-users-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Administrador
+                        </th>
+
+                        <th scope="col">
+                            Estado
+                        </th>
+
+                        <th scope="col">
+                            Creado
+                        </th>
+
+                        <th scope="col" class="admin-users-table__actions-column">
+                            Acciones
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="admin-users-table-body">
+                </tbody>
+
+            </table>
+
+
+            <div class="admin-users-empty" id="admin-users-empty" hidden>
+
+                <span class="admin-users-empty__icon" aria-hidden="true">
+                    ◉
+                </span>
+
+                <strong>
+                    No hay administradores registrados.
+                </strong>
+
+                <small>
+                    Crea el primer usuario desde el formulario.
+                </small>
+
+            </div>
+
+
+            <div class="admin-users-loading" id="admin-users-loading">
+                Cargando usuarios...
+            </div>
+
+        </div>
+
+    </article>
+
+</section>
+
+
+<div class="admin-users-modal" id="admin-users-modal" hidden aria-hidden="true">
+
+    <div class="admin-users-modal__backdrop" data-user-modal-close></div>
+
+
+    <section class="admin-users-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="admin-user-modal-title">
+
+        <div class="admin-users-modal__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    ADMINISTRADOR
+                </span>
+
+                <h2 id="admin-user-modal-title">
+                    Editar usuario
+                </h2>
+
+            </div>
+
+
+            <button type="button" class="admin-users-modal__close" id="admin-user-modal-close"
+                aria-label="Cerrar ventana">
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="admin-user-edit-form" class="admin-users-form" novalidate>
+
+            <input type="hidden" id="edit-user-id">
+
+
+            <div class="admin-users-field">
+
+                <label for="edit-user-email">
+                    Correo electrónico
+                </label>
+
+                <input type="email" id="edit-user-email" autocomplete="email" maxlength="255" required>
+
+            </div>
+
+
+            <div class="admin-users-field">
+
+                <label for="edit-user-status">
+                    Estado
+                </label>
+
+                <select id="edit-user-status" required>
+
+                    <option value="true">
+                        Activo
+                    </option>
+
+                    <option value="false">
+                        Inactivo
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="admin-users-modal__security">
+
+                <span class="eyebrow">
+                    CONTRASEÑA
+                </span>
+
+                <p>
+                    Déjala vacía para conservar la contraseña actual.
+                </p>
+
+            </div>
+
+
+            <div class="admin-users-field">
+
+                <label for="edit-user-password">
+                    Nueva contraseña
+                </label>
+
+                <input type="password" id="edit-user-password" autocomplete="new-password" minlength="8"
+                    placeholder="Mínimo 8 caracteres">
+
+            </div>
+
+
+            <div class="admin-users-field">
+
+                <label for="edit-user-password-confirmation">
+                    Confirmar nueva contraseña
+                </label>
+
+                <input type="password" id="edit-user-password-confirmation" autocomplete="new-password" minlength="8"
+                    placeholder="Repite la nueva contraseña">
+
+            </div>
+
+
+            <div id="admin-user-edit-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+            <div class="admin-users-modal__actions">
+
+                <button type="button" class="admin-users-button admin-users-button--secondary"
+                    id="admin-user-edit-cancel">
+                    Cancelar
+                </button>
+
+
+                <button type="submit" class="admin-users-button admin-users-button--primary"
+                    id="admin-user-edit-submit">
+
+                    <span id="admin-user-edit-submit-label">
+                        Guardar cambios
+                    </span>
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/admin-users.js'
+    ) }}" defer></script>
+
+{% endblock %}

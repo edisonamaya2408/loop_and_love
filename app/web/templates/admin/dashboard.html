@@ -1,0 +1,332 @@
+{% extends "admin/base.html" %}
+
+
+{% block title %}
+Loop & Love | Dashboard
+{% endblock %}
+
+
+{% block content %}
+
+<section class="admin-page-header">
+
+    <div>
+
+        <span class="eyebrow">
+            ADMINISTRACIÓN
+        </span>
+
+        <h1>
+            Dashboard
+        </h1>
+
+        <p>
+            Gestiona el catálogo y prepara tu tienda
+            para recibir pedidos.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="admin-kpi-grid" aria-label="Resumen del sistema">
+
+
+    <article class="admin-kpi-card">
+
+        <div class="admin-kpi-card__top">
+
+            <span class="admin-kpi-card__label">
+                Productos
+            </span>
+
+            <span class="admin-kpi-card__icon" aria-hidden="true">
+                ◇
+            </span>
+
+        </div>
+
+        <strong class="admin-kpi-card__value" id="admin-product-count">
+            —
+        </strong>
+
+        <span class="admin-kpi-card__helper">
+            Productos registrados
+        </span>
+
+    </article>
+
+
+    <article class="admin-kpi-card">
+
+        <div class="admin-kpi-card__top">
+
+            <span class="admin-kpi-card__label">
+                Categorías
+            </span>
+
+            <span class="admin-kpi-card__icon" aria-hidden="true">
+                ◌
+            </span>
+
+        </div>
+
+        <strong class="admin-kpi-card__value" id="admin-category-count">
+            —
+        </strong>
+
+        <span class="admin-kpi-card__helper">
+            Categorías configuradas
+        </span>
+
+    </article>
+
+
+    <article class="admin-kpi-card">
+
+        <div class="admin-kpi-card__top">
+
+            <span class="admin-kpi-card__label">
+                Pedidos
+            </span>
+
+            <span class="admin-kpi-card__icon" aria-hidden="true">
+                ♡
+            </span>
+
+        </div>
+
+        <strong class="admin-kpi-card__value">
+            Próximo
+        </strong>
+
+        <span class="admin-kpi-card__helper">
+            Flujo B2B + WhatsApp
+        </span>
+
+    </article>
+
+
+    <article class="admin-kpi-card">
+
+        <div class="admin-kpi-card__top">
+
+            <span class="admin-kpi-card__label">
+                WhatsApp
+            </span>
+
+            <span class="admin-kpi-card__icon" aria-hidden="true">
+                ☎
+            </span>
+
+        </div>
+
+        <strong class="admin-kpi-card__value">
+            Próximo
+        </strong>
+
+        <span class="admin-kpi-card__helper">
+            Pedidos desde catálogo
+        </span>
+
+    </article>
+
+</section>
+
+
+<section class="admin-dashboard-grid">
+
+
+    <article class="admin-panel admin-panel--primary">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    CATÁLOGO
+                </span>
+
+                <h2>
+                    Administración del catálogo
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <p class="admin-panel__description">
+            Desde este espacio podrás crear y administrar
+            productos con código, nombre, descripción,
+            precio, categoría, imagen y estado.
+        </p>
+
+
+        <div class="admin-flow">
+
+
+            <a href="{{ url_for(
+                    'web.admin_products_page'
+                ) }}" class="
+                    admin-flow__item
+                    admin-flow__item--link
+                ">
+
+                <span>
+                    01
+                </span>
+
+                <strong>
+                    Productos
+                </strong>
+
+                <small>
+                    Crear, editar y publicar productos.
+                </small>
+
+            </a>
+
+
+            <a href="{{ url_for(
+                    'web.admin_categories_page'
+                ) }}" class="
+                    admin-flow__item
+                    admin-flow__item--link
+                ">
+
+                <span>
+                    02
+                </span>
+
+                <strong>
+                    Categorías
+                </strong>
+
+                <small>
+                    Organizar el catálogo.
+                </small>
+
+            </a>
+
+
+            <a href="{{ url_for(
+                    'web.admin_users_page'
+                ) }}" class="
+                    admin-flow__item
+                    admin-flow__item--link
+                ">
+
+                <span>
+                    03
+                </span>
+
+                <strong>
+                    Usuarios
+                </strong>
+
+                <small>
+                    Administrar accesos del equipo.
+                </small>
+
+            </a>
+
+        </div>
+
+    </article>
+
+
+    <article class="admin-panel">
+
+        <div class="admin-panel__header">
+
+            <div>
+
+                <span class="eyebrow">
+                    SEGURIDAD
+                </span>
+
+                <h2>
+                    Estado de la sesión
+                </h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="admin-security-list">
+
+            <div class="admin-security-item">
+
+                <span class="admin-security-item__status" aria-hidden="true">
+                    ✓
+                </span>
+
+                <div>
+
+                    <strong>
+                        Autenticación JWT
+                    </strong>
+
+                    <small>
+                        API administrativa protegida.
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-security-item">
+
+                <span class="admin-security-item__status" aria-hidden="true">
+                    ✓
+                </span>
+
+                <div>
+
+                    <strong>
+                        Revocación de sesión
+                    </strong>
+
+                    <small>
+                        Logout mediante token_version.
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-security-item">
+
+                <span class="admin-security-item__status" aria-hidden="true">
+                    ✓
+                </span>
+
+                <div>
+
+                    <strong>
+                        Protección administrativa
+                    </strong>
+
+                    <small>
+                        Los datos administrativos requieren JWT.
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </article>
+
+</section>
+
+
+<div class="admin-toast" id="admin-toast" role="status" aria-live="polite" hidden></div>
+
+{% endblock %}

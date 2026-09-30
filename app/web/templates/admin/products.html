@@ -1,0 +1,525 @@
+{% extends "admin/base.html" %}
+
+
+{% block title %}
+Loop & Love | Productos
+{% endblock %}
+
+
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/admin-products.css'
+    ) }}">
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="admin-page-header">
+
+    <div>
+
+        <span class="eyebrow">
+            CATÁLOGO
+        </span>
+
+        <h1>
+            Productos
+        </h1>
+
+        <p>
+            Crea, consulta y administra los productos
+            disponibles en tu catálogo B2B.
+        </p>
+
+    </div>
+
+
+    <button type="button" id="admin-product-new-button" class="admin-products-button admin-products-button--primary">
+        Nuevo producto
+    </button>
+
+</section>
+
+
+<section class="admin-panel admin-products-filters-panel">
+
+    <div class="admin-panel__header">
+
+        <div>
+
+            <span class="eyebrow">
+                FILTROS
+            </span>
+
+            <h2>
+                Buscar productos
+            </h2>
+
+        </div>
+
+    </div>
+
+
+    <form id="admin-product-filter-form" class="admin-products-filters">
+
+        <div class="admin-products-field">
+
+            <label for="product-search">
+                Buscar
+            </label>
+
+            <input type="search" id="product-search" placeholder="Código o nombre" autocomplete="off">
+
+        </div>
+
+
+        <div class="admin-products-field">
+
+            <label for="product-category-filter">
+                Categoría
+            </label>
+
+            <select id="product-category-filter">
+
+                <option value="">
+                    Todas las categorías
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="admin-products-field">
+
+            <label for="product-status-filter">
+                Estado
+            </label>
+
+            <select id="product-status-filter">
+
+                <option value="">
+                    Todos
+                </option>
+
+                <option value="true">
+                    Activos
+                </option>
+
+                <option value="false">
+                    Inactivos
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="admin-products-field">
+
+            <label for="product-min-price">
+                Precio mínimo
+            </label>
+
+            <input type="number" id="product-min-price" min="0" step="0.01" inputmode="decimal" placeholder="0">
+
+        </div>
+
+
+        <div class="admin-products-field">
+
+            <label for="product-max-price">
+                Precio máximo
+            </label>
+
+            <input type="number" id="product-max-price" min="0" step="0.01" inputmode="decimal" placeholder="0">
+
+        </div>
+
+
+        <div class="admin-products-filter-actions">
+
+            <button type="submit" class="admin-products-button admin-products-button--primary">
+                Buscar
+            </button>
+
+
+            <button type="button" id="admin-product-clear-filters"
+                class="admin-products-button admin-products-button--secondary">
+                Limpiar
+            </button>
+
+        </div>
+
+    </form>
+
+</section>
+
+
+<section class="admin-panel admin-products-list-panel">
+
+    <div class="admin-panel__header">
+
+        <div>
+
+            <span class="eyebrow">
+                CATÁLOGO
+            </span>
+
+            <h2>
+                Productos registrados
+            </h2>
+
+        </div>
+
+
+        <span class="admin-products-count" id="admin-products-count">
+            0
+        </span>
+
+    </div>
+
+
+    <div id="admin-product-list-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+    <div class="admin-products-table-wrapper">
+
+        <table class="admin-products-table">
+
+            <thead>
+
+                <tr>
+
+                    <th scope="col">
+                        Producto
+                    </th>
+
+                    <th scope="col">
+                        Categoría
+                    </th>
+
+                    <th scope="col">
+                        Precio
+                    </th>
+
+                    <th scope="col">
+                        Estado
+                    </th>
+
+                    <th scope="col">
+                        Creado
+                    </th>
+
+                    <th scope="col" class="admin-products-table__actions-column">
+                        Acciones
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="admin-products-table-body">
+            </tbody>
+
+        </table>
+
+
+        <div class="admin-products-loading" id="admin-products-loading">
+            Cargando productos...
+        </div>
+
+
+        <div class="admin-products-empty" id="admin-products-empty" hidden>
+
+            <span class="admin-products-empty__icon" aria-hidden="true">
+                ◇
+            </span>
+
+            <strong>
+                No encontramos productos.
+            </strong>
+
+            <small>
+                Prueba cambiando los filtros o crea un producto nuevo.
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="admin-products-pagination">
+
+        <button type="button" id="admin-product-previous" class="admin-products-pagination__button" disabled>
+            Anterior
+        </button>
+
+
+        <span id="admin-product-page-indicator" class="admin-products-pagination__indicator">
+            Página 1 de 1
+        </span>
+
+
+        <button type="button" id="admin-product-next" class="admin-products-pagination__button" disabled>
+            Siguiente
+        </button>
+
+    </div>
+
+</section>
+
+
+<div class="admin-products-modal" id="admin-products-modal" hidden aria-hidden="true">
+
+    <div class="admin-products-modal__backdrop" data-product-modal-close></div>
+
+
+    <section class="admin-products-modal__dialog" role="dialog" aria-modal="true"
+        aria-labelledby="admin-product-modal-title">
+
+        <div class="admin-products-modal__header">
+
+            <div>
+
+                <span class="eyebrow" id="admin-product-modal-eyebrow">
+                    NUEVO PRODUCTO
+                </span>
+
+                <h2 id="admin-product-modal-title">
+                    Crear producto
+                </h2>
+
+            </div>
+
+
+            <button type="button" class="admin-products-modal__close" id="admin-product-modal-close"
+                aria-label="Cerrar ventana">
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="admin-product-form" class="admin-products-form" novalidate>
+
+            <input type="hidden" id="admin-product-id">
+
+
+            <div class="admin-products-form-grid">
+
+
+                <div class="admin-products-field">
+
+                    <label for="admin-product-code">
+                        Código
+                    </label>
+
+                    <input type="text" id="admin-product-code" maxlength="50" autocomplete="off"
+                        placeholder="Ej. OSO-001" required>
+
+                </div>
+
+
+                <div class="admin-products-field">
+
+                    <label for="admin-product-name">
+                        Nombre
+                    </label>
+
+                    <input type="text" id="admin-product-name" maxlength="150" autocomplete="off"
+                        placeholder="Ej. Amigurumi Oso" required>
+
+                </div>
+
+
+                <div class="admin-products-field admin-products-field--full">
+
+                    <label for="admin-product-description">
+                        Descripción
+                    </label>
+
+                    <textarea id="admin-product-description" rows="4" maxlength="2000"
+                        placeholder="Descripción del producto"></textarea>
+
+                </div>
+
+
+                <div class="admin-products-field">
+
+                    <label for="admin-product-price">
+                        Precio
+                    </label>
+
+                    <input type="number" id="admin-product-price" min="0" step="0.01" inputmode="decimal"
+                        placeholder="0.00" required>
+
+                </div>
+
+
+                <div class="admin-products-field">
+
+                    <label for="admin-product-category">
+                        Categoría
+                    </label>
+
+                    <select id="admin-product-category" required>
+
+                        <option value="">
+                            Selecciona una categoría
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="admin-products-field">
+
+                    <label for="admin-product-status">
+                        Estado
+                    </label>
+
+                    <select id="admin-product-status" required>
+
+                        <option value="true">
+                            Activo
+                        </option>
+
+                        <option value="false">
+                            Inactivo
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="admin-products-field admin-products-field--full">
+
+                    <label for="admin-product-image">
+                        Imagen
+                    </label>
+
+                    <input type="file" id="admin-product-image" accept="image/jpeg,image/png,image/webp">
+
+                    <small class="admin-products-field__hint">
+                        JPG, PNG o WebP. Máximo 5 MB.
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-products-image-box" id="admin-product-image-box" hidden>
+
+                <div class="admin-products-image-preview">
+
+                    <img id="admin-product-image-preview" src="" alt="Vista previa del producto">
+
+                </div>
+
+
+                <div class="admin-products-image-actions">
+
+                    <span id="admin-product-image-status" class="admin-products-image-status">
+                        Imagen actual
+                    </span>
+
+
+                    <button type="button" id="admin-product-remove-image"
+                        class="admin-products-button admin-products-button--secondary" hidden>
+                        Eliminar imagen
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div id="admin-product-form-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+            <div class="admin-products-modal__actions">
+
+                <button type="button" id="admin-product-cancel"
+                    class="admin-products-button admin-products-button--secondary">
+                    Cancelar
+                </button>
+
+
+                <button type="submit" id="admin-product-submit"
+                    class="admin-products-button admin-products-button--primary">
+
+                    <span id="admin-product-submit-label">
+                        Crear producto
+                    </span>
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+
+<div class="admin-products-confirm" id="admin-product-delete-confirm" hidden aria-hidden="true">
+
+    <div class="admin-products-confirm__backdrop" data-product-delete-close></div>
+
+
+    <section class="admin-products-confirm__dialog" role="dialog" aria-modal="true"
+        aria-labelledby="admin-product-delete-title">
+
+        <span class="eyebrow">
+            ELIMINAR PRODUCTO
+        </span>
+
+        <h2 id="admin-product-delete-title">
+            ¿Eliminar producto?
+        </h2>
+
+        <p id="admin-product-delete-message">
+            Esta acción eliminará el producto.
+        </p>
+
+
+        <div class="admin-products-confirm__actions">
+
+            <button type="button" id="admin-product-delete-cancel"
+                class="admin-products-button admin-products-button--secondary">
+                Cancelar
+            </button>
+
+
+            <button type="button" id="admin-product-delete-confirm-button"
+                class="admin-products-button admin-products-button--danger">
+                Eliminar producto
+            </button>
+
+        </div>
+
+    </section>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/admin-products.js'
+    ) }}" defer></script>
+
+{% endblock %}

@@ -13,6 +13,67 @@ class AuthenticationError(DomainError):
         )
 
 
+class AdminSetupNotRequiredError(DomainError):
+    """
+    Indica que la configuración inicial ya fue completada.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "La configuración inicial del administrador "
+            "ya fue completada."
+        )
+
+
+class InvalidAdminSetupTokenError(DomainError):
+    """
+    Indica que el código secreto de configuración
+    no es válido.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "El código de configuración no es válido."
+        )
+
+
+class AdminSetupUnavailableError(DomainError):
+    """
+    Indica que no existe una configuración segura disponible
+    para realizar el bootstrap inicial.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "La configuración inicial no está disponible."
+        )
+
+class DuplicateAdminUserEmailError(DomainError):
+    """Indica que el correo administrativo ya existe."""
+
+    def __init__(
+        self,
+        email: str,
+    ):
+        self.email = email
+
+        super().__init__(
+            f"Ya existe un administrador con el correo {email}."
+        )
+
+
+class AdminUserLastActiveError(DomainError):
+    """
+    Impide desactivar al último administrador activo.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "No se puede desactivar el último "
+            "administrador activo."
+        )
+
+
 class DuplicateProductCodeError(DomainError):
     """Indica que el código de producto ya existe."""
 
@@ -44,6 +105,7 @@ class DuplicateCategorySlugError(DomainError):
         super().__init__(
             f"Ya existe una categoría con el slug {slug}"
         )
+
 
 class StorageOperationError(DomainError):
     """

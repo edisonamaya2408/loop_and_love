@@ -1,10 +1,90 @@
 import os
 
 import pytest
+
+from flask import (
+    current_app,
+)
+
 from sqlalchemy.orm import Session
 
 from app import create_app
 from app.extensions import db
+from app.presentation.middleware import (
+    auth_middleware,
+)
+from tests.unit.auth_test_helpers import (
+    create_isolated_admin_repository,
+)
+
+
+@pytest.fixture(autouse=True)
+def isolate_unit_admin_auth(
+    request,
+    monkeypatch,
+):
+    """
+    Aísla la autenticación administrativa de los unit tests.
+
+    Los unit tests no deben depender del estado persistente
+    de admin_users en SQL Server o PostgreSQL.
+
+    Los tests de integración quedan fuera de este mecanismo
+    y utilizan el repositorio real.
+
+    Si un test unitario ya inyectó explícitamente un repository
+    mediante app.extensions["admin_user_repository"], ese
+    repository tiene prioridad.
+    """
+
+    is_integration_test = (
+        request.node.get_closest_marker(
+            "integration"
+        )
+        is not None
+    )
+
+    if is_integration_test:
+        return
+
+    def get_admin_user_repository():
+        explicit_repository = (
+            current_app.extensions.get(
+                "admin_user_repository"
+            )
+        )
+
+        if (
+            explicit_repository
+            is not None
+        ):
+            return explicit_repository
+
+        isolated_repository = (
+            current_app.extensions.get(
+                "_unit_admin_user_repository"
+            )
+        )
+
+        if (
+            isolated_repository
+            is None
+        ):
+            isolated_repository = (
+                create_isolated_admin_repository()
+            )
+
+            current_app.extensions[
+                "_unit_admin_user_repository"
+            ] = isolated_repository
+
+        return isolated_repository
+
+    monkeypatch.setattr(
+        auth_middleware,
+        "_get_admin_user_repository",
+        get_admin_user_repository,
+    )
 
 
 @pytest.fixture

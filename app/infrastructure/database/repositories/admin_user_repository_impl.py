@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.domain.entities.admin_user import (
@@ -81,6 +82,59 @@ class SQLAlchemyAdminUserRepository(
             model
         )
 
+    def count(self) -> int:
+        """Devuelve el total de administradores registrados."""
+
+        total = (
+            self.session.query(
+                func.count(
+                    AdminUser.id
+                )
+            )
+            .scalar()
+        )
+
+        return int(
+            total or 0
+        )
+
+    def count_active(self) -> int:
+        """Devuelve el total de administradores activos."""
+
+        total = (
+            self.session.query(
+                func.count(
+                    AdminUser.id
+                )
+            )
+            .filter(
+                AdminUser.is_active == True
+            )
+            .scalar()
+        )
+
+        return int(
+            total or 0
+        )
+
+    def list_all(
+        self,
+    ) -> list[AdminUserEntity]:
+        """Lista todos los administradores ordenados por correo."""
+
+        models = (
+            self.session.query(AdminUser)
+            .order_by(
+                AdminUser.email.asc()
+            )
+            .all()
+        )
+
+        return [
+            self._to_entity(model)
+            for model in models
+        ]
+
     def create(
         self,
         admin_user: AdminUserEntity,
@@ -97,6 +151,74 @@ class SQLAlchemyAdminUserRepository(
 
         return self._to_entity(
             model
+        )
+
+    def update(
+        self,
+        admin_user: AdminUserEntity,
+        *,
+        increment_token_version: bool = False,
+    ) -> AdminUserEntity | None:
+        """
+        Actualiza los datos del administrador.
+
+        Cuando se solicita incremento de token_version,
+        la operación se realiza directamente en SQL para
+        evitar un read-modify-write no atómico.
+        """
+
+        if admin_user.id is None:
+            raise ValueError(
+                "El ID del administrador es obligatorio."
+            )
+
+        values = {
+            AdminUser.email: admin_user.email,
+            AdminUser.password_hash: admin_user.password_hash,
+            AdminUser.is_active: admin_user.is_active,
+            AdminUser.updated_at: datetime.now(
+                timezone.utc
+            ),
+        }
+
+        if increment_token_version:
+            values[
+                AdminUser.token_version
+            ] = (
+                AdminUser.token_version
+                + 1
+            )
+        else:
+            values[
+                AdminUser.token_version
+            ] = admin_user.token_version
+
+        try:
+            updated_rows = (
+                self.session.query(
+                    AdminUser
+                )
+                .filter(
+                    AdminUser.id == admin_user.id
+                )
+                .update(
+                    values,
+                    synchronize_session=False,
+                )
+            )
+
+            if updated_rows == 0:
+                self.session.rollback()
+                return None
+
+            self.session.commit()
+
+        except Exception:
+            self.session.rollback()
+            raise
+
+        return self.get_by_id(
+            admin_user.id
         )
 
     def increment_token_version(

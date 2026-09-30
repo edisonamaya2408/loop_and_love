@@ -483,6 +483,46 @@
         }
       }
     },
+    "/api/orders": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Crea un pedido B2B público",
+        "operationId": "createOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pedido creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/admin/products/{product_id}": {
       "get": {
         "tags": [
@@ -955,6 +995,166 @@
           }
         }
       }
+    },
+    "/api/admin/users": {
+      "get": {
+        "operationId": "adminListUsers",
+        "summary": "Lista los usuarios administrativos.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuarios administrativos consultados correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "adminCreateUser",
+        "summary": "Crea un usuario administrativo.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario administrativo creado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}": {
+      "get": {
+        "operationId": "adminGetUser",
+        "summary": "Obtiene un usuario administrativo.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AdminUserId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usuario administrativo consultado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "adminUpdateUser",
+        "summary": "Actualiza un usuario administrativo.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AdminUserId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario administrativo actualizado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1068,6 +1268,17 @@
             "true",
             "false"
           ]
+        }
+      },
+      "AdminUserId": {
+        "description": "Identificador entero del usuario administrativo.",
+        "in": "path",
+        "name": "user_id",
+        "required": true,
+        "schema": {
+          "format": "int32",
+          "minimum": 1,
+          "type": "integer"
         }
       }
     },
@@ -1665,6 +1876,307 @@
             "type": "boolean"
           }
         }
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "email": {
+            "format": "email",
+            "type": "string",
+            "maxLength": 255
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "is_active"
+        ]
+      },
+      "AdminUserResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AdminUser"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminUserListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminUser"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminUserCreateRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string",
+            "maxLength": 255
+          },
+          "password": {
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          },
+          "password_confirmation": {
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "password_confirmation"
+        ]
+      },
+      "AdminUserUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string",
+            "maxLength": 255
+          },
+          "password": {
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          },
+          "password_confirmation": {
+            "format": "password",
+            "minLength": 8,
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": [
+          "product_id",
+          "code",
+          "name",
+          "unit_price",
+          "quantity",
+          "line_total"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "unit_price": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "85000.00"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "line_total": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "170000.00"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "phone",
+          "city",
+          "observations",
+          "status",
+          "items",
+          "total",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "observations": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            }
+          },
+          "total": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$",
+            "example": "170000.00"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "OrderCreateItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product_id",
+          "quantity"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "maximum": 99
+          }
+        }
+      },
+      "OrderCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "phone",
+          "city",
+          "items"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "observations": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/OrderCreateItem"
+            }
+          }
+        }
+      },
+      "OrderResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Order"
+          }
+        }
       }
     },
     "responses": {
@@ -1686,7 +2198,7 @@
         }
       },
       "ValidationError": {
-        "description": "Error de validación",
+        "description": "La solicitud contiene datos inválidos.",
         "content": {
           "application/json": {
             "schema": {
@@ -1696,31 +2208,11 @@
         }
       },
       "AuthenticationRequired": {
-        "description": "Autenticación requerida o token no válido",
+        "description": "Autenticación administrativa requerida.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
-            },
-            "examples": {
-              "required": {
-                "value": {
-                  "success": false,
-                  "error": {
-                    "code": "AUTHENTICATION_REQUIRED",
-                    "message": "Se requiere autenticación."
-                  }
-                }
-              },
-              "expired": {
-                "value": {
-                  "success": false,
-                  "error": {
-                    "code": "INVALID_OR_EXPIRED_TOKEN",
-                    "message": "El token no es válido o ha expirado."
-                  }
-                }
-              }
             }
           }
         }
@@ -1838,18 +2330,31 @@
         }
       },
       "InternalServerError": {
-        "description": "Error interno no expuesto al cliente",
+        "description": "Error interno del servidor.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
-            },
-            "example": {
-              "success": false,
-              "error": {
-                "code": "INTERNAL_SERVER_ERROR",
-                "message": "Ocurrió un error interno en el servidor."
-              }
+            }
+          }
+        }
+      },
+      "ConflictError": {
+        "description": "La operación entra en conflicto con el estado actual del recurso.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "El recurso solicitado no existe.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
             }
           }
         }

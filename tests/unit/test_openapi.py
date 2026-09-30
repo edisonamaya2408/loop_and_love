@@ -10,6 +10,7 @@ OPENAPI_PATH = (
     / "openapi.json"
 )
 
+
 EXPECTED_OPERATIONS = {
     ("GET", "/health"),
     ("GET", "/health/db"),
@@ -24,15 +25,39 @@ EXPECTED_OPERATIONS = {
     ("POST", "/api/admin/products"),
     ("GET", "/api/admin/products/<int:product_id>"),
     ("PUT", "/api/admin/products/<int:product_id>"),
-    ("PATCH", "/api/admin/products/<int:product_id>/status"),
-    ("DELETE", "/api/admin/products/<int:product_id>"),
-    ("DELETE", "/api/admin/products/<int:product_id>/image"),
+    (
+        "PATCH",
+        "/api/admin/products/<int:product_id>/status",
+    ),
+    (
+        "DELETE",
+        "/api/admin/products/<int:product_id>",
+    ),
+    (
+        "DELETE",
+        "/api/admin/products/<int:product_id>/image",
+    ),
     ("GET", "/api/admin/categories"),
     ("POST", "/api/admin/categories"),
-    ("GET", "/api/admin/categories/<int:category_id>"),
-    ("PUT", "/api/admin/categories/<int:category_id>"),
-    ("DELETE", "/api/admin/categories/<int:category_id>"),
+    (
+        "GET",
+        "/api/admin/categories/<int:category_id>",
+    ),
+    (
+        "PUT",
+        "/api/admin/categories/<int:category_id>",
+    ),
+    (
+        "DELETE",
+        "/api/admin/categories/<int:category_id>",
+    ),
+    ("GET", "/api/admin/users"),
+    ("POST", "/api/admin/users"),
+    ("GET", "/api/admin/users/<int:user_id>"),
+    ("PATCH", "/api/admin/users/<int:user_id>"),
+    ("POST", "/api/orders"),
 }
+
 
 EXPECTED_OPENAPI_PATHS = {
     "/health",
@@ -50,6 +75,9 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/admin/products/{product_id}/status",
     "/api/admin/categories",
     "/api/admin/categories/{category_id}",
+    "/api/admin/users",
+    "/api/admin/users/{user_id}",
+    "/api/orders",
 }
 
 
@@ -61,16 +89,43 @@ def _load_openapi():
         return json.load(file)
 
 
+def _is_documented_api_route(rule):
+    return (
+        rule.rule.startswith("/api/")
+        or rule.rule.startswith("/health")
+    )
+
+
 def test_openapi_document_is_valid_json_with_required_metadata():
     document = _load_openapi()
 
     assert document["openapi"] == "3.0.3"
-    assert document["info"]["title"] == "Loop & Love API"
-    assert document["info"]["version"] == "1.0.0"
+
+    assert (
+        document["info"]["title"]
+        == "Loop & Love API"
+    )
+
+    assert (
+        document["info"]["version"]
+        == "1.0.0"
+    )
+
     assert document["paths"]
+
     assert "components" in document
-    assert "securitySchemes" in document["components"]
-    assert "bearerAuth" in document["components"]["securitySchemes"]
+
+    assert (
+        "securitySchemes"
+        in document["components"]
+    )
+
+    assert (
+        "bearerAuth"
+        in document["components"][
+            "securitySchemes"
+        ]
+    )
 
 
 def test_openapi_documents_every_current_explicit_api_route(
@@ -85,11 +140,14 @@ def test_openapi_documents_every_current_explicit_api_route(
         ),
     )
 
-    app = create_app("development")
+    app = create_app(
+        "development"
+    )
 
     explicit_operations = {
         (method, rule.rule)
         for rule in app.url_map.iter_rules()
+        if _is_documented_api_route(rule)
         for method in rule.methods
         if method in {
             "GET",
@@ -98,15 +156,20 @@ def test_openapi_documents_every_current_explicit_api_route(
             "PATCH",
             "DELETE",
         }
-        and not rule.rule.startswith("/static/")
     }
 
-    assert explicit_operations == EXPECTED_OPERATIONS
+    assert (
+        explicit_operations
+        == EXPECTED_OPERATIONS
+    )
 
     document = _load_openapi()
 
     openapi_operations = {
-        (method.upper(), path)
+        (
+            method.upper(),
+            path,
+        )
         for path, item in document["paths"].items()
         for method in item
         if method in {
@@ -119,12 +182,31 @@ def test_openapi_documents_every_current_explicit_api_route(
     }
 
     path_translation = {
-        (method, path.replace("{product_id}", "<int:product_id>").replace("{category_id}", "<int:category_id>"))
+        (
+            method,
+            path.replace(
+                "{product_id}",
+                "<int:product_id>",
+            ).replace(
+                "{category_id}",
+                "<int:category_id>",
+            ).replace(
+                "{user_id}",
+                "<int:user_id>",
+            ),
+        )
         for method, path in openapi_operations
     }
 
-    assert path_translation == EXPECTED_OPERATIONS
-    assert set(document["paths"]) == EXPECTED_OPENAPI_PATHS
+    assert (
+        path_translation
+        == EXPECTED_OPERATIONS
+    )
+
+    assert (
+        set(document["paths"])
+        == EXPECTED_OPENAPI_PATHS
+    )
 
 
 def test_openapi_operation_ids_are_unique():
@@ -132,7 +214,9 @@ def test_openapi_operation_ids_are_unique():
 
     operation_ids = [
         operation["operationId"]
-        for path_item in document["paths"].values()
+        for path_item in document[
+            "paths"
+        ].values()
         for method, operation in path_item.items()
         if method in {
             "get",
@@ -143,7 +227,10 @@ def test_openapi_operation_ids_are_unique():
         }
     ]
 
-    assert len(operation_ids) == len(set(operation_ids))
+    assert (
+        len(operation_ids)
+        == len(set(operation_ids))
+    )
 
 
 def test_openapi_protected_routes_use_bearer_auth():
@@ -159,11 +246,17 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/api/admin/products/{product_id}/status",
         "/api/admin/categories",
         "/api/admin/categories/{category_id}",
+        "/api/admin/users",
+        "/api/admin/users/{user_id}",
     }
 
     for path in protected_paths:
-        for operation in document["paths"][path].values():
-            assert operation["security"] == [
+        for operation in (
+            document["paths"][path].values()
+        ):
+            assert operation[
+                "security"
+            ] == [
                 {"bearerAuth": []}
             ]
 
@@ -178,8 +271,11 @@ def test_openapi_public_catalog_routes_do_not_require_authentication():
         "/api/products/{product_id}",
         "/api/categories",
         "/api/categories/{category_id}",
+        "/api/orders",
     }
 
     for path in public_paths:
-        for operation in document["paths"][path].values():
+        for operation in (
+            document["paths"][path].values()
+        ):
             assert "security" not in operation

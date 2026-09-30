@@ -40,8 +40,14 @@ from app.presentation.middleware.request_logging import (
 from app.presentation.routes.admin_category_routes import (
     admin_categories_bp,
 )
+from app.presentation.routes.order_routes import (
+    orders_bp,
+)
 from app.presentation.routes.admin_product_routes import (
     admin_products_bp,
+)
+from app.presentation.routes.admin_user_routes import (
+    admin_users_bp,
 )
 from app.presentation.routes.auth_routes import (
     auth_bp,
@@ -51,6 +57,9 @@ from app.presentation.routes.category_routes import (
 )
 from app.presentation.routes.product_routes import (
     products_bp,
+)
+from app.presentation.routes.web_routes import (
+    web_bp,
 )
 from app.domain.exceptions import (
     StorageOperationError,
@@ -150,9 +159,13 @@ def create_app(environment=None):
         cors_origins
     )
 
-    # Inicialización de extensiones
     db.init_app(app)
-    migrate.init_app(app, db)
+
+    migrate.init_app(
+        app,
+        db,
+    )
+
     limiter.init_app(
         app
     )
@@ -162,25 +175,45 @@ def create_app(environment=None):
         origins=cors_origins,
     )
 
-    register_error_handlers(app)
+    register_error_handlers(
+        app
+    )
+
+    app.register_blueprint(
+        web_bp
+    )
 
     app.register_blueprint(
         products_bp
     )
+
     app.register_blueprint(
         auth_bp
     )
+
     app.register_blueprint(
         admin_products_bp
     )
+
+    app.register_blueprint(
+        admin_users_bp
+    )
+
     app.register_blueprint(
         categories_bp
     )
+
+    app.register_blueprint(
+        orders_bp
+    )
+
     app.register_blueprint(
         admin_categories_bp
     )
 
-    register_request_logging(app)
+    register_request_logging(
+        app
+    )
 
     @app.get("/health")
     def health_check():

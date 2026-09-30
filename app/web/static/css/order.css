@@ -1,0 +1,403 @@
+/* ==================================================
+   LOOP & LOVE
+   B2B ORDER FORM
+================================================== */
+
+
+/* ==================================================
+   ORDER REQUEST
+================================================== */
+
+.catalog-order-request {
+    margin-top:
+        1.5rem;
+
+    padding-top:
+        1.4rem;
+
+    border-top:
+        1px solid var(--color-border);
+}
+
+
+.catalog-order-request__header {
+    max-width:
+        760px;
+}
+
+
+.catalog-order-request__header h3 {
+    margin:
+        0.3rem 0 0;
+
+    color:
+        var(--color-brown);
+
+    font-size:
+        clamp(1.2rem,
+            3vw,
+            1.7rem);
+
+    line-height:
+        1.15;
+
+    letter-spacing:
+        -0.025em;
+}
+
+
+.catalog-order-request__header p {
+    margin:
+        0.55rem 0 0;
+
+    color:
+        var(--color-text-soft);
+
+    font-size:
+        0.78rem;
+
+    line-height:
+        1.65;
+}
+
+
+/* ==================================================
+   FORM
+================================================== */
+
+.catalog-order-form {
+    margin-top:
+        1.2rem;
+
+    display:
+        grid;
+
+    gap:
+        1rem;
+}
+
+
+.catalog-order-form__grid {
+    display:
+        grid;
+
+    grid-template-columns:
+        repeat(2,
+            minmax(0,
+                1fr));
+
+    gap:
+        1rem;
+}
+
+
+.catalog-order-form .catalog-field {
+    min-width:
+        0;
+}
+
+
+.catalog-order-form .catalog-field--full {
+    grid-column:
+        1 / -1;
+}
+
+
+.catalog-order-form .catalog-field label {
+    display:
+        flex;
+
+    align-items:
+        baseline;
+
+    gap:
+        0.25rem;
+}
+
+
+.catalog-order-form .catalog-field label span {
+    color:
+        var(--color-text-soft);
+
+    font-size:
+        0.68rem;
+
+    font-weight:
+        600;
+}
+
+
+.catalog-order-form input,
+.catalog-order-form textarea {
+    width:
+        100%;
+
+    padding:
+        0.75rem 0.8rem;
+
+    border:
+        1px solid var(--color-border);
+
+    border-radius:
+        12px;
+
+    background:
+        var(--color-white);
+
+    color:
+        var(--color-text);
+
+    outline:
+        none;
+
+    font:
+        inherit;
+
+    font-size:
+        0.84rem;
+
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        background-color 160ms ease;
+}
+
+
+.catalog-order-form input {
+    min-height:
+        46px;
+}
+
+
+.catalog-order-form textarea {
+    min-height:
+        112px;
+
+    resize:
+        vertical;
+
+    line-height:
+        1.55;
+}
+
+
+.catalog-order-form input::placeholder,
+.catalog-order-form textarea::placeholder {
+    color:
+        #A5968D;
+}
+
+
+.catalog-order-form input:focus,
+.catalog-order-form textarea:focus {
+    border-color:
+        var(--color-rose);
+
+    background:
+        var(--color-cream);
+
+    box-shadow:
+        0 0 0 4px rgba(209,
+            149,
+            142,
+            0.14);
+}
+
+
+.catalog-order-form input:invalid:not(:focus):not(:placeholder-shown),
+.catalog-order-form textarea:invalid:not(:focus):not(:placeholder-shown) {
+    border-color:
+        var(--color-rose-deep);
+}
+
+
+.catalog-order-form__submit {
+    min-height:
+        48px;
+
+    margin-top:
+        0.1rem;
+}
+
+
+.catalog-order-form__submit:disabled {
+    opacity:
+        0.62;
+
+    cursor:
+        wait;
+
+    transform:
+        none;
+}
+
+
+/* ==================================================
+   FEEDBACK
+================================================== */
+
+.catalog-order-feedback {
+    margin-top:
+        0.15rem;
+
+    padding:
+        0.85rem 0.9rem;
+
+    display:
+        grid;
+
+    gap:
+        0.55rem;
+
+    border:
+        1px solid var(--color-border);
+
+    border-radius:
+        12px;
+
+    font-size:
+        0.76rem;
+
+    line-height:
+        1.55;
+}
+
+
+.catalog-order-feedback[hidden] {
+    display:
+        none;
+}
+
+
+.catalog-order-feedback__text {
+    margin:
+        0;
+}
+
+
+.catalog-order-feedback--error {
+    border-color:
+        rgba(148,
+            83,
+            75,
+            0.35);
+
+    background:
+        rgba(245,
+            212,
+            204,
+            0.2);
+
+    color:
+        var(--color-rose-deep);
+}
+
+
+.catalog-order-feedback--success {
+    border-color:
+        rgba(96,
+            122,
+            91,
+            0.3);
+
+    background:
+        rgba(228,
+            239,
+            226,
+            0.55);
+
+    color:
+        var(--color-brown);
+}
+
+
+.catalog-order-feedback__link {
+    width:
+        fit-content;
+
+    color:
+        var(--color-brown);
+
+    font-weight:
+        900;
+
+    text-decoration:
+        underline;
+
+    text-underline-offset:
+        3px;
+}
+
+
+.catalog-order-form__note {
+    margin:
+        0;
+
+    color:
+        var(--color-text-soft);
+
+    font-size:
+        0.66rem;
+
+    line-height:
+        1.55;
+
+    text-align:
+        center;
+}
+
+
+/* ==================================================
+   RESPONSIVE
+================================================== */
+
+@media (max-width: 760px) {
+
+    .catalog-order-form__grid {
+        grid-template-columns:
+            1fr;
+    }
+
+
+    .catalog-order-form .catalog-field--full {
+        grid-column:
+            auto;
+    }
+
+}
+
+
+@media (max-width: 640px) {
+
+    .catalog-order-request {
+        margin-top:
+            1.25rem;
+
+        padding-top:
+            1.2rem;
+    }
+
+
+    .catalog-order-form {
+        margin-top:
+            1rem;
+    }
+
+
+    .catalog-order-form__submit {
+        min-height:
+            46px;
+    }
+
+}
+
+
+@media (max-width: 380px) {
+
+    .catalog-order-form input,
+    .catalog-order-form textarea {
+        font-size:
+            0.8rem;
+    }
+
+}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+
+{% block title %}
+Loop & Love | Administración
+{% endblock %}
+
+
+{% block header_actions %}
+
+<div class="header-context">
+    Portal administrativo
+</div>
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="auth-page">
+
+    <div class="auth-card">
+
+
+        <div class="auth-card__brand">
+
+            <img src="{{ url_for(
+                    'static',
+                    filename='images/logo.png'
+                ) }}" alt="Loop & Love">
+
+        </div>
+
+
+        <div class="auth-card__header">
+
+            <span class="eyebrow">
+                ADMINISTRACIÓN
+            </span>
+
+            <h1>
+                Bienvenido
+            </h1>
+
+            <p>
+                Ingresa para administrar el catálogo
+                de Loop & Love.
+            </p>
+
+        </div>
+
+
+        {% if setup_created %}
+
+        <div class="form-message" role="status" aria-live="polite" style="
+                margin-top: 1.5rem;
+                background: #F3F8F3;
+                border-color: #D3E5D3;
+                color: #416B4A;
+            ">
+            Administrador creado correctamente.
+            Ya puedes iniciar sesión.
+        </div>
+
+        {% endif %}
+
+
+        <form class="auth-form" id="admin-login-form" novalidate>
+
+
+            <div class="field">
+
+                <label for="email">
+                    Correo electrónico
+                </label>
+
+                <input id="email" name="email" type="email" autocomplete="username" autocapitalize="none"
+                    inputmode="email" placeholder="correo@ejemplo.com" required>
+
+            </div>
+
+
+            <div class="field">
+
+                <label for="password">
+                    Contraseña
+                </label>
+
+                <input id="password" name="password" type="password" autocomplete="current-password"
+                    placeholder="Tu contraseña" required>
+
+            </div>
+
+
+            <div class="form-message" id="login-message" role="alert" aria-live="polite" hidden></div>
+
+
+            <button class="
+                    button
+                    button--primary
+                    button--full
+                    button--large
+                " type="submit" id="login-submit">
+
+                <span id="login-submit-label">
+                    Ingresar
+                </span>
+
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/admin.js'
+    ) }}" defer></script>
+
+{% endblock %}
