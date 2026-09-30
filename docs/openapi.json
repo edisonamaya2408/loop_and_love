@@ -2042,6 +2042,7 @@
           "name",
           "phone",
           "city",
+          "address",
           "observations",
           "status",
           "items",
@@ -2065,6 +2066,11 @@
           "city": {
             "type": "string",
             "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
           },
           "observations": {
             "type": "string",
@@ -2132,6 +2138,7 @@
           "name",
           "phone",
           "city",
+          "address",
           "items"
         ],
         "properties": {
@@ -2146,6 +2153,10 @@
           "city": {
             "type": "string",
             "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200
           },
           "observations": {
             "type": "string",

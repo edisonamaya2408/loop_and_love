@@ -104,6 +104,7 @@ def test_create_order_persists_header_items_and_total(
             name="Cliente Integración",
             phone="3001234567",
             city="Medellín",
+            address="Calle 10 # 25-30",
             observations="Pedido de prueba.",
             items=[
                 {
@@ -114,6 +115,9 @@ def test_create_order_persists_header_items_and_total(
         )
 
         assert order.id is not None
+        assert order.address == (
+            "Calle 10 # 25-30"
+        )
         assert order.total == (
             Decimal("75001.50")
         )
@@ -146,6 +150,9 @@ def test_create_order_persists_header_items_and_total(
         )
         assert persisted_order.total == (
             Decimal("75001.50")
+        )
+        assert persisted_order.address == (
+            "Calle 10 # 25-30"
         )
 
         persisted_items = (

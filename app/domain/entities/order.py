@@ -29,6 +29,7 @@ class OrderEntity:
     customer_name: str
     phone: str
     city: str
+    address: str | None
     observations: str | None
     status: str
     total: Decimal

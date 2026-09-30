@@ -30,6 +30,7 @@ def _order_to_dict(order):
         "name": order.customer_name,
         "phone": order.phone,
         "city": order.city,
+        "address": order.address,
         "observations": order.observations,
         "status": order.status,
         "items": [
@@ -105,6 +106,7 @@ def create_order():
         name=data.get("name"),
         phone=data.get("phone"),
         city=data.get("city"),
+        address=data.get("address"),
         observations=data.get("observations"),
         items=data.get("items"),
     )

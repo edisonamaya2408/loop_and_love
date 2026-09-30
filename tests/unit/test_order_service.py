@@ -122,6 +122,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
         name="  María   López ",
         phone="+57 300 123 4567",
         city="  Medellín  ",
+        address="Calle 10 # 25-30",
         observations=(
             "  Entregar en la mañana. "
         ),
@@ -147,6 +148,9 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
     assert order.city == "Medellín"
     assert order.observations == (
         "Entregar en la mañana."
+    )
+    assert order.address == (
+        "Calle 10 # 25-30"
     )
     assert order.status == "pending"
     assert order.total == (
@@ -184,6 +188,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
                 "name": "",
                 "phone": "3001234567",
                 "city": "Medellín",
+                "address": "Calle 10 # 25-30",
                 "observations": None,
                 "items": [
                     {
@@ -199,6 +204,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
                 "name": "María",
                 "phone": "",
                 "city": "Medellín",
+                "address": "Calle 10 # 25-30",
                 "observations": None,
                 "items": [
                     {
@@ -214,6 +220,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
                 "name": "María",
                 "phone": "3001234567",
                 "city": "",
+                "address": "Calle 10 # 25-30",
                 "observations": None,
                 "items": [
                     {
@@ -229,6 +236,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
                 "name": "María",
                 "phone": "abc3001234",
                 "city": "Medellín",
+                "address": "Calle 10 # 25-30",
                 "observations": None,
                 "items": [
                     {
@@ -244,6 +252,7 @@ def test_create_order_calculates_server_side_total_and_snapshots_product():
                 "name": "María",
                 "phone": "3001234567",
                 "city": "Medellín",
+                "address": "Calle 10 # 25-30",
                 "observations": None,
                 "items": [],
             },
@@ -277,6 +286,7 @@ def test_create_order_rejects_duplicate_products():
             name="María",
             phone="3001234567",
             city="Medellín",
+            address="Calle 10 # 25-30",
             observations=None,
             items=[
                 {
@@ -309,6 +319,7 @@ def test_create_order_rejects_unavailable_product():
             name="María",
             phone="3001234567",
             city="Medellín",
+            address="Calle 10 # 25-30",
             observations=None,
             items=[
                 {
@@ -326,6 +337,7 @@ def test_create_order_normalizes_blank_observations_to_none():
         name="María",
         phone="3001234567",
         city="Medellín",
+        address="Calle 10 # 25-30",
         observations="   ",
         items=[
             {
@@ -349,6 +361,7 @@ def test_create_order_rejects_quantity_over_limit():
             name="María",
             phone="3001234567",
             city="Medellín",
+            address="Calle 10 # 25-30",
             observations=None,
             items=[
                 {
@@ -367,3 +380,47 @@ def test_get_order_validates_id():
         match="ID del pedido",
     ):
         service.get_order(0)
+
+
+def test_create_order_rejects_empty_address():
+    service = _service()
+
+    with pytest.raises(
+        ValueError,
+        match="La dirección es obligatoria",
+    ):
+        service.create_order(
+            name="María",
+            phone="3001234567",
+            city="Medellín",
+            address="",
+            observations=None,
+            items=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+        )
+
+
+def test_create_order_rejects_address_over_limit():
+    service = _service()
+
+    with pytest.raises(
+        ValueError,
+        match="200 caracteres",
+    ):
+        service.create_order(
+            name="María",
+            phone="3001234567",
+            city="Medellín",
+            address="A" * 201,
+            observations=None,
+            items=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+        )

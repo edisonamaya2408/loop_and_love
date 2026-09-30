@@ -81,6 +81,16 @@ def test_public_catalog_order_form_markup_is_available(
     )
 
     assert (
+        'id="order-customer-address"'
+        in body
+    )
+
+    assert (
+        'name="address"'
+        in body
+    )
+
+    assert (
         'id="order-customer-observations"'
         in body
     )
@@ -263,6 +273,11 @@ def test_public_catalog_order_javascript_is_available(
 
     assert (
         "clearCart"
+        in body
+    )
+
+    assert (
+        "order-customer-address"
         in body
     )
     

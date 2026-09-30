@@ -14,6 +14,7 @@ class FakeOrderService:
         name,
         phone,
         city,
+        address,
         observations,
         items,
     ):
@@ -22,6 +23,7 @@ class FakeOrderService:
                 "name": name,
                 "phone": phone,
                 "city": city,
+                "address": address,
                 "observations": observations,
                 "items": items,
             }
@@ -35,6 +37,7 @@ class FakeOrderService:
                 "customer_name": name,
                 "phone": phone,
                 "city": city,
+                "address": "Calle 10 # 25-30",
                 "observations": observations,
                 "status": "pending",
                 "items": [
@@ -118,6 +121,7 @@ def test_create_order_returns_created_order(
             "name": "María López",
             "phone": "+57 300 123 4567",
             "city": "Medellín",
+            "address": "Calle 10 # 25-30",
             "observations": (
                 "Entregar mañana."
             ),
@@ -145,6 +149,9 @@ def test_create_order_returns_created_order(
     assert data["data"]["city"] == (
         "Medellín"
     )
+    assert data["data"]["address"] == (
+        "Calle 10 # 25-30"
+    )
     assert data["data"]["status"] == (
         "pending"
     )
@@ -171,6 +178,7 @@ def test_create_order_returns_created_order(
             "name": "María López",
             "phone": "+57 300 123 4567",
             "city": "Medellín",
+            "address": "Calle 10 # 25-30",
             "observations": (
                 "Entregar mañana."
             ),

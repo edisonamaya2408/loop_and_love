@@ -526,7 +526,8 @@ function buildWhatsAppMessage(
         "*Datos del cliente:*",
         `Nombre: ${order.name}`,
         `Teléfono: ${order.phone}`,
-        `Ciudad: ${order.city}`
+        `Ciudad: ${order.city}`,
+        `Dirección: ${order.address}`
     );
 
 
@@ -680,6 +681,12 @@ async function submitCatalogOrder(
         city:
             getOrderElement(
                 "order-customer-city"
+            )?.value ||
+            "",
+
+        address:
+            getOrderElement(
+                "order-customer-address"
             )?.value ||
             "",
 

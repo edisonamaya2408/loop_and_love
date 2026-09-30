@@ -51,6 +51,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
             customer_name=model.customer_name,
             phone=model.phone,
             city=model.city,
+            address=model.address,
             observations=model.observations,
             status=model.status,
             total=Decimal(
@@ -69,6 +70,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
             customer_name=order.customer_name,
             phone=order.phone,
             city=order.city,
+            address=order.address,
             observations=order.observations,
             status=order.status,
             total=order.total,

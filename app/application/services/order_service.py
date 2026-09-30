@@ -22,6 +22,7 @@ class OrderService:
     MAX_NAME_LENGTH = 150
     MAX_PHONE_LENGTH = 30
     MAX_CITY_LENGTH = 100
+    MAX_ADDRESS_LENGTH = 200
     MAX_OBSERVATIONS_LENGTH = 2000
 
     PHONE_PATTERN = re.compile(
@@ -41,6 +42,7 @@ class OrderService:
         name: str,
         phone: str,
         city: str,
+        address: str,
         observations: str | None,
         items,
     ) -> OrderEntity:
@@ -60,6 +62,13 @@ class OrderService:
             "La ciudad es obligatoria.",
             "La ciudad no puede superar los 100 caracteres.",
             self.MAX_CITY_LENGTH,
+        )
+
+        clean_address = self._validate_text(
+            address,
+            "La dirección es obligatoria.",
+            "La dirección no puede superar los 200 caracteres.",
+            self.MAX_ADDRESS_LENGTH,
         )
 
         clean_observations = self._validate_observations(
@@ -115,6 +124,7 @@ class OrderService:
             customer_name=customer_name,
             phone=clean_phone,
             city=clean_city,
+            address=clean_address,
             observations=clean_observations,
             status=ORDER_STATUS_PENDING,
             total=total,

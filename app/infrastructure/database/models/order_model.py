@@ -41,6 +41,11 @@ class Order(db.Model):
         nullable=False,
     )
 
+    address = db.Column(
+        db.Unicode(200),
+        nullable=True,
+    )
+
     observations = db.Column(
         db.UnicodeText,
         nullable=True,
