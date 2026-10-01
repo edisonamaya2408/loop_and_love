@@ -147,6 +147,60 @@ class OrderService:
             order_id
         )
 
+    def list_admin_orders(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        page: int | str | None = None,
+        per_page: int | str | None = None,
+    ):
+        from app.application.dto.pagination import (
+            PaginationParams,
+        )
+        from app.application.dto.paginated_result import (
+            PaginatedResult,
+            PaginationMetadata,
+        )
+
+        pagination = (
+            PaginationParams.from_values(
+                page=page,
+                per_page=per_page,
+            )
+        )
+
+        clean_search = (
+            self._clean_text(
+                search
+            )
+        )
+
+        clean_status = (
+            self._validate_admin_status(
+                status
+            )
+        )
+
+        orders, total = (
+            self.repository.get_all_paginated(
+                search=clean_search,
+                status=clean_status,
+                offset=pagination.offset,
+                limit=pagination.per_page,
+            )
+        )
+
+        metadata = PaginationMetadata(
+            page=pagination.page,
+            per_page=pagination.per_page,
+            total=total,
+        )
+
+        return PaginatedResult(
+            items=orders,
+            pagination=metadata,
+        )
+
     @classmethod
     def _validate_items(
         cls,
@@ -366,3 +420,56 @@ class OrderService:
             order_id,
             "El ID del pedido debe ser un entero mayor que cero.",
         )
+
+    @staticmethod
+    def _clean_text(
+        value: str | None,
+    ) -> str | None:
+
+        if value is None:
+            return None
+
+        if not isinstance(
+            value,
+            str,
+        ):
+            raise ValueError(
+                "El valor debe ser texto."
+            )
+
+        value = value.strip()
+
+        return value or None
+
+    @staticmethod
+    def _validate_admin_status(
+        value,
+    ) -> str | None:
+
+        if value is None:
+            return None
+
+        if not isinstance(
+            value,
+            str,
+        ):
+            raise ValueError(
+                "El estado del pedido no es válido."
+            )
+
+        normalized = (
+            value.strip().lower()
+        )
+
+        allowed_statuses = {
+            "pending",
+            "confirmed",
+            "cancelled",
+        }
+
+        if normalized not in allowed_statuses:
+            raise ValueError(
+                "El estado del pedido no es válido."
+            )
+
+        return normalized

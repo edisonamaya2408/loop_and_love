@@ -331,3 +331,25 @@ def admin_products_page():
     return render_template(
         "admin/products.html"
     )
+
+@web_bp.get("/admin/orders")
+def admin_orders_page():
+    """
+    Página de administración de pedidos.
+
+    La autenticación efectiva de las operaciones se realiza
+    mediante JWT en la API. Esta ruta únicamente entrega
+    la interfaz; admin-orders.js verifica que exista un token
+    antes de consumir el endpoint protegido.
+    """
+
+    if _setup_required():
+        return redirect(
+            url_for(
+                "web.admin_setup"
+            )
+        )
+
+    return render_template(
+        "admin/orders.html"
+    )

@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session, selectinload
 
+from sqlalchemy import or_
+
 from app.domain.entities.order import (
     OrderEntity,
     OrderItemEntity,
@@ -122,3 +124,69 @@ class SQLAlchemyOrderRepository(OrderRepository):
             return None
 
         return self._to_entity(model)
+
+    def get_all_paginated(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        offset: int = 0,
+        limit: int = 12,
+    ) -> tuple[list[OrderEntity], int]:
+
+        query = (
+            self.session.query(Order)
+            .options(
+                selectinload(
+                    Order.items
+                )
+            )
+        )
+
+        if search:
+            search_pattern = (
+                f"%{search}%"
+            )
+
+            query = query.filter(
+                or_(
+                    Order.customer_name.ilike(
+                        search_pattern
+                    ),
+                    Order.phone.ilike(
+                        search_pattern
+                    ),
+                    Order.city.ilike(
+                        search_pattern
+                    ),
+                    Order.address.ilike(
+                        search_pattern
+                    ),
+                )
+            )
+
+        if status is not None:
+            query = query.filter(
+                Order.status == status
+            )
+
+        total = query.count()
+
+        models = (
+            query
+            .order_by(
+                Order.created_at.desc(),
+                Order.id.desc(),
+            )
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        orders = [
+            self._to_entity(
+                model
+            )
+            for model in models
+        ]
+
+        return orders, total

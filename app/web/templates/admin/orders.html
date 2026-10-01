@@ -1,0 +1,449 @@
+{% extends "admin/base.html" %}
+
+
+{% block title %}
+Loop & Love | Pedidos
+{% endblock %}
+
+
+{% block head %}
+
+<link rel="stylesheet" href="{{ url_for(
+        'static',
+        filename='css/admin-orders.css'
+    ) }}">
+
+{% endblock %}
+
+
+{% block content %}
+
+<section class="admin-page-header">
+
+    <div>
+
+        <span class="eyebrow">
+            ADMINISTRACIÓN
+        </span>
+
+        <h1>
+            Pedidos
+        </h1>
+
+        <p>
+            Gestiona y consulta los pedidos recibidos
+            desde el catálogo B2B.
+        </p>
+
+    </div>
+
+</section>
+
+
+<section class="admin-orders-panel admin-panel">
+
+    <div class="admin-panel__header">
+
+        <div>
+
+            <span class="eyebrow">
+                GESTIÓN DE PEDIDOS
+            </span>
+
+            <h2>
+                Pedidos registrados
+            </h2>
+
+        </div>
+
+
+        <span class="admin-orders-count" id="admin-orders-count">
+            0
+        </span>
+
+    </div>
+
+
+    <form id="admin-orders-filter-form" class="admin-orders-filters" novalidate>
+
+        <div class="admin-orders-field">
+
+            <label for="admin-orders-search">
+                Buscar
+            </label>
+
+            <input type="search" id="admin-orders-search" name="search" maxlength="200"
+                placeholder="Nombre, teléfono, ciudad o dirección" autocomplete="off">
+
+        </div>
+
+
+        <div class="admin-orders-field">
+
+            <label for="admin-orders-status">
+                Estado
+            </label>
+
+            <select id="admin-orders-status" name="status">
+
+                <option value="">
+                    Todos los estados
+                </option>
+
+                <option value="pending">
+                    Pendiente
+                </option>
+
+                <option value="confirmed">
+                    Confirmado
+                </option>
+
+                <option value="cancelled">
+                    Cancelado
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="admin-orders-filter-actions">
+
+            <button type="submit" class="admin-orders-button admin-orders-button--primary"
+                id="admin-orders-search-button">
+                Buscar
+            </button>
+
+
+            <button type="button" class="admin-orders-button admin-orders-button--secondary"
+                id="admin-orders-clear-button">
+                Limpiar
+            </button>
+
+        </div>
+
+    </form>
+
+
+    <div id="admin-orders-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+    <div class="admin-orders-table-wrapper">
+
+        <table class="admin-orders-table">
+
+            <thead>
+
+                <tr>
+
+                    <th scope="col">
+                        Pedido
+                    </th>
+
+                    <th scope="col">
+                        Cliente
+                    </th>
+
+                    <th scope="col">
+                        Ubicación
+                    </th>
+
+                    <th scope="col">
+                        Total
+                    </th>
+
+                    <th scope="col">
+                        Estado
+                    </th>
+
+                    <th scope="col">
+                        Fecha
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="admin-orders-table-body">
+            </tbody>
+
+        </table>
+
+
+        <div class="admin-orders-loading" id="admin-orders-loading">
+            Cargando pedidos...
+        </div>
+
+
+        <div class="admin-orders-empty" id="admin-orders-empty" hidden>
+
+            <span class="admin-orders-empty__icon" aria-hidden="true">
+                ♡
+            </span>
+
+            <strong>
+                No hay pedidos para mostrar.
+            </strong>
+
+            <small>
+                Los pedidos recibidos desde el catálogo
+                aparecerán aquí.
+            </small>
+
+        </div>
+
+    </div>
+
+
+    <div class="admin-orders-pagination" id="admin-orders-pagination" aria-label="Paginación de pedidos">
+
+        <button type="button" class="admin-orders-pagination__button" id="admin-orders-prev" disabled>
+            Anterior
+        </button>
+
+
+        <span class="admin-orders-pagination__info" id="admin-orders-pagination-info">
+            Página 1 de 1
+        </span>
+
+
+        <button type="button" class="admin-orders-pagination__button" id="admin-orders-next" disabled>
+            Siguiente
+        </button>
+
+    </div>
+
+    <div class="admin-orders-modal" id="admin-order-detail-modal" hidden aria-hidden="true">
+
+        <div class="admin-orders-modal__backdrop" data-order-detail-close></div>
+
+
+        <section class="admin-orders-modal__dialog" role="dialog" aria-modal="true"
+            aria-labelledby="admin-order-detail-title">
+
+            <header class="admin-orders-modal__header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        DETALLE DEL PEDIDO
+                    </span>
+
+                    <h2 id="admin-order-detail-title">
+                        Pedido
+                    </h2>
+
+                </div>
+
+
+                <button type="button" class="admin-orders-modal__close" id="admin-order-detail-close"
+                    aria-label="Cerrar detalle del pedido">
+                    ×
+                </button>
+
+            </header>
+
+
+            <div class="admin-orders-modal__body">
+
+                <div id="admin-order-detail-loading" class="admin-orders-detail-state">
+                    Cargando pedido...
+                </div>
+
+
+                <div id="admin-order-detail-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+                <div id="admin-order-detail-content" class="admin-orders-detail-content" hidden>
+
+                    <div class="admin-orders-detail-grid">
+
+                        <article class="admin-orders-detail-card">
+
+                            <span class="eyebrow">
+                                CLIENTE
+                            </span>
+
+                            <strong id="admin-order-detail-name">
+                                —
+                            </strong>
+
+                            <span id="admin-order-detail-phone">
+                                —
+                            </span>
+
+                        </article>
+
+
+                        <article class="admin-orders-detail-card">
+
+                            <span class="eyebrow">
+                                UBICACIÓN
+                            </span>
+
+                            <strong id="admin-order-detail-city">
+                                —
+                            </strong>
+
+                            <span id="admin-order-detail-address">
+                                —
+                            </span>
+
+                        </article>
+
+
+                        <article class="admin-orders-detail-card">
+
+                            <span class="eyebrow">
+                                ESTADO
+                            </span>
+
+                            <span id="admin-order-detail-status" class="admin-orders-status">
+                                —
+                            </span>
+
+                        </article>
+
+
+                        <article class="admin-orders-detail-card">
+
+                            <span class="eyebrow">
+                                TOTAL
+                            </span>
+
+                            <strong id="admin-order-detail-total" class="admin-orders-detail-total">
+                                —
+                            </strong>
+
+                        </article>
+
+                    </div>
+
+
+                    <div class="admin-orders-detail-section">
+
+                        <div class="admin-orders-detail-section__header">
+
+                            <div>
+
+                                <span class="eyebrow">
+                                    INFORMACIÓN
+                                </span>
+
+                                <h3>
+                                    Observaciones
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+
+                        <p id="admin-order-detail-observations" class="admin-orders-detail-observations">
+                            —
+                        </p>
+
+                    </div>
+
+
+                    <div class="admin-orders-detail-section">
+
+                        <div class="admin-orders-detail-section__header">
+
+                            <div>
+
+                                <span class="eyebrow">
+                                    PRODUCTOS
+                                </span>
+
+                                <h3>
+                                    Productos del pedido
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="admin-orders-detail-items-wrapper">
+
+                            <table class="admin-orders-detail-items">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            Producto
+                                        </th>
+
+                                        <th>
+                                            Código
+                                        </th>
+
+                                        <th>
+                                            Cantidad
+                                        </th>
+
+                                        <th>
+                                            Precio
+                                        </th>
+
+                                        <th>
+                                            Subtotal
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+
+                                <tbody id="admin-order-detail-items"></tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="admin-orders-detail-meta">
+
+                        <span>
+                            Creado:
+                            <strong id="admin-order-detail-created">
+                                —
+                            </strong>
+                        </span>
+
+                        <span>
+                            Actualizado:
+                            <strong id="admin-order-detail-updated">
+                                —
+                            </strong>
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+</section>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script src="{{ url_for(
+        'static',
+        filename='js/admin-orders.js'
+    ) }}" defer></script>
+
+{% endblock %}

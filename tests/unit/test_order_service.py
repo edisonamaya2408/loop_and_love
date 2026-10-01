@@ -43,9 +43,30 @@ class FakeProductRepository:
 
 
 class FakeOrderRepository:
-    def __init__(self):
+    def __init__(
+        self,
+        paginated_orders=None,
+        paginated_total=None,
+    ):
         self.created_orders = []
         self.next_id = 1
+
+        self.paginated_orders = (
+            paginated_orders
+            or []
+        )
+
+        self.paginated_total = (
+            (
+                len(
+                    self.paginated_orders
+                )
+                if paginated_total is None
+                else paginated_total
+            )
+        )
+
+        self.paginated_calls = []
 
     def create(
         self,
@@ -70,6 +91,29 @@ class FakeOrderRepository:
                 return order
 
         return None
+
+    def get_all_paginated(
+        self,
+        search=None,
+        status=None,
+        offset=0,
+        limit=12,
+    ):
+        self.paginated_calls.append(
+            {
+                "search": search,
+                "status": status,
+                "offset": offset,
+                "limit": limit,
+            }
+        )
+
+        return (
+            self.paginated_orders[
+                offset:offset + limit
+            ],
+            self.paginated_total,
+        )
 
 
 def _product(
@@ -101,6 +145,30 @@ def _service(
                 _product()
             ]
         ),
+    )
+
+
+def _admin_service(
+    paginated_orders=None,
+    paginated_total=None,
+):
+    repository = FakeOrderRepository(
+        paginated_orders=paginated_orders,
+        paginated_total=paginated_total,
+    )
+
+    service = OrderService(
+        repository=repository,
+        product_repository=FakeProductRepository(
+            products=[
+                _product()
+            ]
+        ),
+    )
+
+    return (
+        service,
+        repository,
     )
 
 
@@ -424,3 +492,223 @@ def test_create_order_rejects_address_over_limit():
                 }
             ],
         )
+
+
+def test_list_admin_orders_uses_default_pagination_and_returns_metadata():
+    orders = [
+        SimpleNamespace(
+            id=15,
+        ),
+        SimpleNamespace(
+            id=14,
+        ),
+    ]
+
+    service, repository = _admin_service(
+        paginated_orders=orders,
+        paginated_total=27,
+    )
+
+    result = service.list_admin_orders()
+
+    assert result.items == orders
+
+    assert result.pagination.page == 1
+
+    assert result.pagination.per_page == 12
+
+    assert result.pagination.total == 27
+
+    assert result.pagination.pages == 3
+
+    assert result.pagination.has_next is True
+
+    assert result.pagination.has_previous is False
+
+    assert repository.paginated_calls == [
+        {
+            "search": None,
+            "status": None,
+            "offset": 0,
+            "limit": 12,
+        }
+    ]
+
+
+def test_list_admin_orders_normalizes_search_and_status():
+    orders = [
+        SimpleNamespace(
+            id=15,
+        ),
+    ]
+
+    service, repository = _admin_service(
+        paginated_orders=orders,
+        paginated_total=1,
+    )
+
+    result = service.list_admin_orders(
+        search="  María López  ",
+        status="  PENDING  ",
+    )
+
+    assert result.items == orders
+
+    assert repository.paginated_calls == [
+        {
+            "search": "María López",
+            "status": "pending",
+            "offset": 0,
+            "limit": 12,
+        }
+    ]
+
+
+def test_list_admin_orders_converts_pagination_values():
+    orders = [
+        SimpleNamespace(
+            id=10,
+        ),
+        SimpleNamespace(
+            id=11,
+        ),
+        SimpleNamespace(
+            id=12,
+        ),
+        SimpleNamespace(
+            id=13,
+        ),
+        SimpleNamespace(
+            id=14,
+        ),
+        SimpleNamespace(
+            id=15,
+        ),
+    ]
+
+    service, repository = _admin_service(
+        paginated_orders=orders,
+        paginated_total=20,
+    )
+
+    result = service.list_admin_orders(
+        search="cliente",
+        status="confirmed",
+        page="2",
+        per_page="5",
+    )
+
+    assert result.items == [
+        SimpleNamespace(
+            id=15,
+        ),
+    ]
+
+    assert result.pagination.page == 2
+
+    assert result.pagination.per_page == 5
+
+    assert result.pagination.total == 20
+
+    assert result.pagination.pages == 4
+
+    assert result.pagination.has_next is True
+
+    assert result.pagination.has_previous is True
+
+    assert repository.paginated_calls == [
+        {
+            "search": "cliente",
+            "status": "confirmed",
+            "offset": 5,
+            "limit": 5,
+        }
+    ]
+
+
+def test_list_admin_orders_normalizes_blank_search_to_none():
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    result = service.list_admin_orders(
+        search="   ",
+    )
+
+    assert result.items == []
+
+    assert result.pagination.total == 0
+
+    assert result.pagination.pages == 0
+
+    assert result.pagination.has_next is False
+
+    assert result.pagination.has_previous is False
+
+    assert repository.paginated_calls == [
+        {
+            "search": None,
+            "status": None,
+            "offset": 0,
+            "limit": 12,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "processing",
+        "completed",
+        "cancelledx",
+        "",
+        "invalid",
+    ],
+)
+def test_list_admin_orders_rejects_invalid_status(
+    status,
+):
+    service, repository = _admin_service()
+
+    with pytest.raises(
+        ValueError,
+        match="estado del pedido",
+    ):
+        service.list_admin_orders(
+            status=status,
+        )
+
+    assert repository.paginated_calls == []
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "pending",
+        "confirmed",
+        "cancelled",
+    ],
+)
+def test_list_admin_orders_accepts_valid_statuses(
+    status,
+):
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    result = service.list_admin_orders(
+        status=status,
+    )
+
+    assert result.items == []
+
+    assert repository.paginated_calls == [
+        {
+            "search": None,
+            "status": status,
+            "offset": 0,
+            "limit": 12,
+        }
+    ]

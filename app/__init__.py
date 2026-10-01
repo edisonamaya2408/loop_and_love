@@ -43,6 +43,9 @@ from app.presentation.routes.admin_category_routes import (
 from app.presentation.routes.order_routes import (
     orders_bp,
 )
+from app.presentation.routes.admin_order_routes import (
+    admin_orders_bp,
+)
 from app.presentation.routes.admin_product_routes import (
     admin_products_bp,
 )
@@ -205,6 +208,10 @@ def create_app(environment=None):
 
     app.register_blueprint(
         orders_bp
+    )
+
+    app.register_blueprint(
+        admin_orders_bp
     )
 
     app.register_blueprint(

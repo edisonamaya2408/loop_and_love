@@ -174,10 +174,14 @@
                     </span>
 
 
-                    <button type="button" class="
-                            admin-nav__item
-                            admin-nav__item--disabled
-                        " disabled>
+                    <a href="{{ url_for(
+                        'web.admin_orders_page'
+                        ) }}" class="
+                        admin-nav__item
+                        {% if request.path == url_for('web.admin_orders_page') %}
+                        admin-nav__item--active
+                        {% endif %}
+                    ">
 
                         <span class="admin-nav__icon" aria-hidden="true">
                             ♡
@@ -187,11 +191,7 @@
                             Pedidos
                         </span>
 
-                        <small>
-                            Próximo
-                        </small>
-
-                    </button>
+                    </a>
 
                 </div>
 
