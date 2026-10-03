@@ -58,6 +58,10 @@ EXPECTED_OPERATIONS = {
     ("POST", "/api/orders"),
     ("GET", "/api/admin/orders"),
     ("GET","/api/admin/orders/<int:order_id>",),
+    (
+        "PATCH",
+        "/api/admin/orders/<int:order_id>/status",
+    ),
 }
 
 
@@ -82,6 +86,7 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/orders",
     "/api/admin/orders",
     "/api/admin/orders/{order_id}",
+    "/api/admin/orders/{order_id}/status",
 }
 
 
@@ -200,6 +205,9 @@ def test_openapi_documents_every_current_explicit_api_route(
             ).replace(
                 "{order_id}",
                 "<int:order_id>",
+            ).replace(
+                "{order_id}",
+                "<int:order_id>",
             ),
         )
         for method, path in openapi_operations
@@ -257,6 +265,7 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/api/admin/users/{user_id}",
         "/api/admin/orders",
         "/api/admin/orders/{order_id}",
+        "/api/admin/orders/{order_id}/status",
     }
 
     for path in protected_paths:

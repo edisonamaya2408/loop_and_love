@@ -193,6 +193,37 @@ class FakeOrderService:
 
         return result
 
+    def update_admin_order_status(
+        self,
+        order_id,
+        status,
+    ):
+        allowed_statuses = {
+            "confirmed",
+            "cancelled",
+        }
+
+        if status not in allowed_statuses:
+            raise ValueError(
+                "El estado solicitado no es válido."
+            )
+
+        order = self.get_order(
+            order_id
+        )
+
+        if order is None:
+            return None
+
+        if order.status == status:
+            raise ValueError(
+                "El pedido ya tiene ese estado."
+            )
+
+        order.status = status
+
+        return order
+
 
 def _admin():
     return SimpleNamespace(
@@ -612,4 +643,160 @@ def test_get_admin_order_returns_not_found(
 
     assert data["error"]["message"] == (
         "El pedido no existe."
+    )
+
+def test_update_admin_order_status_requires_authentication(
+    monkeypatch,
+):
+    app, _ = _create_test_app(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/admin/orders/15/status",
+        json={
+            "status": "confirmed"
+        },
+    )
+
+    assert response.status_code == 401
+
+    data = response.get_json()
+
+    assert data["success"] is False
+
+    assert data["error"]["code"] == (
+        "AUTHENTICATION_REQUIRED"
+    )
+
+
+def test_update_admin_order_status_confirms_order(
+    monkeypatch,
+):
+    app, _ = _create_test_app(
+        monkeypatch
+    )
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/admin/orders/15/status",
+        json={
+            "status": "confirmed"
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["success"] is True
+
+    assert data["data"]["id"] == 15
+
+    assert data["data"]["status"] == (
+        "confirmed"
+    )
+
+
+def test_update_admin_order_status_cancels_order(
+    monkeypatch,
+):
+    app, _ = _create_test_app(
+        monkeypatch
+    )
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/admin/orders/15/status",
+        json={
+            "status": "cancelled"
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["success"] is True
+
+    assert data["data"]["status"] == (
+        "cancelled"
+    )
+
+
+def test_update_admin_order_status_returns_not_found(
+    monkeypatch,
+):
+    app, _ = _create_test_app(
+        monkeypatch
+    )
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/admin/orders/999/status",
+        json={
+            "status": "confirmed"
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 404
+
+    data = response.get_json()
+
+    assert data["success"] is False
+
+    assert data["error"]["code"] == (
+        "ORDER_NOT_FOUND"
+    )
+
+
+def test_update_admin_order_status_rejects_invalid_payload(
+    monkeypatch,
+):
+    app, _ = _create_test_app(
+        monkeypatch
+    )
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.patch(
+        "/api/admin/orders/15/status",
+        json={
+            "status": "invalid"
+        },
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert data["success"] is False
+
+    assert data["error"]["code"] == (
+        "INVALID_ORDER_STATUS"
     )

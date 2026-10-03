@@ -23,6 +23,15 @@ class OrderRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_status(
+        self,
+        order_id: int,
+        status: str,
+    ) -> OrderEntity | None:
+        """Actualiza el estado de un pedido."""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_all_paginated(
         self,
         search: str | None = None,

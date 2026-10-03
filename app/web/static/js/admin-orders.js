@@ -8,6 +8,9 @@ const adminOrdersState = {
     pages: 0,
     search: "",
     status: "",
+    orders: [],
+    currentOrder: null,
+    updatingStatus: false,
 };
 
 
@@ -26,6 +29,212 @@ function getOrderDetailElement(
     return document.getElementById(
         id
     );
+}
+
+
+function normalizeAdminCustomerWhatsAppNumber(
+    phone
+) {
+    const digits =
+        String(
+            phone || ""
+        )
+            .trim()
+            .replace(
+                /[^\d]/g,
+                ""
+            );
+
+
+    if (
+        digits.startsWith(
+            "00"
+        )
+    ) {
+        return digits.slice(
+            2
+        );
+    }
+
+
+    /*
+     * Los pedidos actuales utilizan teléfonos
+     * principalmente de Colombia.
+     *
+     * Un celular colombiano de 10 dígitos
+     * que comienza por 3 se convierte a
+     * formato internacional +57.
+     */
+    if (
+        digits.length === 10 &&
+        digits.startsWith("3")
+    ) {
+        return `57${digits}`;
+    }
+
+
+    return digits;
+}
+
+
+function isValidAdminCustomerWhatsAppNumber(
+    number
+) {
+    return (
+        /^57\d{10}$/.test(
+            number
+        ) ||
+        /^\d{11,15}$/.test(
+            number
+        )
+    );
+}
+
+
+function buildAdminCustomerWhatsAppMessage(
+    order
+) {
+    const items =
+        Array.isArray(
+            order?.items
+        )
+            ? order.items
+            : [];
+
+
+    const lines = [
+        `Hola ${order.name || "cliente"}, te contactamos de Loop & Love respecto a tu pedido #${order.id}.`,
+        "",
+        `*Estado:* ${getStatusLabel(order.status)}`,
+        "",
+        "*Productos:*",
+    ];
+
+
+    items.forEach(
+        (
+            item
+        ) => {
+            lines.push(
+                `• ${item.name || "Producto"} x ${item.quantity ?? 0} — ${formatCurrency(item.line_total)}`
+            );
+        }
+    );
+
+
+    lines.push(
+        "",
+        `*Total:* ${formatCurrency(order.total)}`,
+        "",
+        "*Datos de entrega:*",
+        `Ciudad: ${order.city || "Sin ciudad"}`,
+        `Dirección: ${order.address || "Sin dirección"}`
+    );
+
+
+    if (
+        typeof order.observations ===
+        "string" &&
+        order.observations.trim()
+    ) {
+        lines.push(
+            `Observaciones: ${order.observations.trim()}`
+        );
+    }
+
+
+    lines.push(
+        "",
+        "Quedamos atentos."
+    );
+
+
+    return lines.join(
+        "\n"
+    );
+}
+
+
+function buildAdminCustomerWhatsAppUrl(
+    number,
+    order
+) {
+    return (
+        `https://wa.me/${number}?text=${encodeURIComponent(
+            buildAdminCustomerWhatsAppMessage(
+                order
+            )
+        )}`
+    );
+}
+
+
+function contactCustomerByWhatsApp(
+    order
+) {
+    if (
+        !order ||
+        !order.id
+    ) {
+        return;
+    }
+
+
+    const number =
+        normalizeAdminCustomerWhatsAppNumber(
+            order.phone
+        );
+
+
+    const message =
+        getOrderDetailElement(
+            "admin-order-detail-message"
+        );
+
+
+    if (
+        !isValidAdminCustomerWhatsAppNumber(
+            number
+        )
+    ) {
+        setOrderDetailMessage(
+            message,
+            "El teléfono del cliente no tiene un formato válido para WhatsApp."
+        );
+
+        return;
+    }
+
+
+    setOrderDetailMessage(
+        message,
+        ""
+    );
+
+
+    const whatsappUrl =
+        buildAdminCustomerWhatsAppUrl(
+            number,
+            order
+        );
+
+
+    const whatsappWindow =
+        window.open(
+            whatsappUrl,
+            "_blank",
+            "noopener,noreferrer"
+        );
+
+
+    if (
+        !whatsappWindow
+    ) {
+        setOrderDetailMessage(
+            message,
+            "El navegador bloqueó la ventana de WhatsApp. Permite ventanas emergentes para este sitio e inténtalo nuevamente."
+        );
+    }
 }
 
 
@@ -142,6 +351,9 @@ function getStatusLabel(
 function renderOrderDetail(
     order
 ) {
+    adminOrdersState.currentOrder =
+        order;
+
     const content =
         getOrderDetailElement(
             "admin-order-detail-content"
@@ -252,6 +464,10 @@ function renderOrderDetail(
                 order.status
             );
     }
+
+    updateOrderStatusActions(
+        order.status
+    );
 
     if (total) {
         total.textContent =
@@ -366,6 +582,237 @@ function renderOrderDetail(
             );
         }
     );
+}
+
+
+function setOrderStatusButtonsDisabled(
+    disabled
+) {
+    const confirmButton =
+        getOrderDetailElement(
+            "admin-order-confirm-button"
+        );
+
+    const cancelButton =
+        getOrderDetailElement(
+            "admin-order-cancel-button"
+        );
+
+    if (confirmButton) {
+        confirmButton.disabled =
+            disabled;
+    }
+
+    if (cancelButton) {
+        cancelButton.disabled =
+            disabled;
+    }
+}
+
+
+function updateOrderStatusActions(
+    status
+) {
+    const actions =
+        getOrderDetailElement(
+            "admin-order-status-actions"
+        );
+
+    const confirmButton =
+        getOrderDetailElement(
+            "admin-order-confirm-button"
+        );
+
+    const cancelButton =
+        getOrderDetailElement(
+            "admin-order-cancel-button"
+        );
+
+    const isPending =
+        status === "pending";
+
+    if (actions) {
+        actions.hidden =
+            !isPending;
+    }
+
+    if (confirmButton) {
+        confirmButton.hidden =
+            !isPending;
+    }
+
+    if (cancelButton) {
+        cancelButton.hidden =
+            !isPending;
+    }
+
+    if (!isPending) {
+        setOrderStatusButtonsDisabled(
+            false
+        );
+    }
+}
+
+
+function updateOrderInCurrentPage(
+    order
+) {
+    const index =
+        adminOrdersState.orders.findIndex(
+            (item) =>
+                Number(item.id) ===
+                Number(order.id)
+        );
+
+    if (index === -1) {
+        return;
+    }
+
+    adminOrdersState.orders[index] =
+        order;
+}
+
+
+async function updateOrderStatus(
+    status
+) {
+    const order =
+        adminOrdersState.currentOrder;
+
+    if (
+        !order ||
+        order.status !== "pending"
+    ) {
+        return;
+    }
+
+    if (
+        status === "cancelled" &&
+        !window.confirm(
+            "¿Confirmas que deseas cancelar este pedido?"
+        )
+    ) {
+        return;
+    }
+
+    const message =
+        getOrderDetailElement(
+            "admin-order-detail-message"
+        );
+
+    setOrderDetailMessage(
+        message,
+        ""
+    );
+
+    adminOrdersState.updatingStatus =
+        true;
+
+    setOrderStatusButtonsDisabled(
+        true
+    );
+
+    try {
+        const response =
+            await adminFetch(
+                `/api/admin/orders/${encodeURIComponent(
+                    order.id
+                )}/status`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify({
+                        status,
+                    }),
+                }
+            );
+
+
+        const data =
+            await parseJsonSafely(
+                response
+            );
+
+
+        if (!response.ok) {
+            throw new Error(
+                getErrorMessage(
+                    data
+                )
+            );
+        }
+
+
+        const updatedOrder =
+            data?.data;
+
+
+        if (
+            !updatedOrder ||
+            typeof updatedOrder !== "object"
+        ) {
+            throw new Error(
+                "El servidor no devolvió un pedido válido."
+            );
+        }
+
+
+        renderOrderDetail(
+            updatedOrder
+        );
+
+
+        updateOrderInCurrentPage(
+            updatedOrder
+        );
+
+
+        renderOrders(
+            adminOrdersState.orders
+        );
+
+
+        setOrderDetailMessage(
+            message,
+            "El estado del pedido se actualizó correctamente."
+        );
+
+    } catch (error) {
+
+        if (
+            error instanceof Error &&
+            error.message ===
+            "La sesión ha expirado."
+        ) {
+            return;
+        }
+
+
+        setOrderDetailMessage(
+            message,
+            error instanceof Error
+                ? error.message
+                : "No fue posible actualizar el estado del pedido."
+        );
+
+    } finally {
+
+        adminOrdersState.updatingStatus =
+            false;
+
+        if (
+            adminOrdersState.currentOrder?.status ===
+            "pending"
+        ) {
+            setOrderStatusButtonsDisabled(
+                false
+            );
+        }
+
+    }
 }
 
 
@@ -484,6 +931,18 @@ function openOrderDetail(
         return;
     }
 
+
+    adminOrdersState.currentOrder =
+        null;
+
+    adminOrdersState.updatingStatus =
+        false;
+
+    updateOrderStatusActions(
+        null
+    );
+
+
     modal.hidden = false;
 
     modal.setAttribute(
@@ -494,6 +953,7 @@ function openOrderDetail(
     document.body.classList.add(
         "admin-modal-open"
     );
+
 
     loadOrderDetail(
         orderId
@@ -520,6 +980,16 @@ function closeOrderDetail() {
 
     document.body.classList.remove(
         "admin-modal-open"
+    );
+
+    adminOrdersState.currentOrder =
+        null;
+
+    adminOrdersState.updatingStatus =
+        false;
+
+    updateOrderStatusActions(
+        null
     );
 }
 
@@ -556,6 +1026,11 @@ function createTextElement(
 function renderOrders(
     orders
 ) {
+    adminOrdersState.orders =
+        Array.isArray(orders)
+            ? orders
+            : [];
+
     const tableBody =
         getOrdersElement(
             "admin-orders-table-body"
@@ -576,15 +1051,19 @@ function renderOrders(
             "admin-orders-count"
         );
 
+
     if (!tableBody) {
         return;
     }
 
+
     tableBody.replaceChildren();
+
 
     if (loading) {
         loading.hidden = true;
     }
+
 
     if (count) {
         count.textContent =
@@ -593,13 +1072,16 @@ function renderOrders(
             );
     }
 
+
     if (!orders.length) {
+
         if (emptyState) {
             emptyState.hidden = false;
         }
 
         return;
     }
+
 
     if (emptyState) {
         emptyState.hidden = true;
@@ -608,6 +1090,7 @@ function renderOrders(
 
     orders.forEach(
         (order) => {
+
             const row =
                 document.createElement(
                     "tr"
@@ -617,18 +1100,22 @@ function renderOrders(
             const orderCell =
                 createCell();
 
+
             const orderWrapper =
                 document.createElement(
                     "div"
                 );
 
+
             orderWrapper.className =
                 "admin-orders-order";
+
 
             const orderButton =
                 document.createElement(
                     "button"
                 );
+
 
             orderButton.type =
                 "button";
@@ -643,6 +1130,7 @@ function renderOrders(
                 String(
                     order.id
                 );
+
 
             orderButton.addEventListener(
                 "click",
@@ -663,6 +1151,7 @@ function renderOrders(
                 )
             );
 
+
             orderCell.append(
                 orderWrapper
             );
@@ -671,13 +1160,16 @@ function renderOrders(
             const customerCell =
                 createCell();
 
+
             const customerWrapper =
                 document.createElement(
                     "div"
                 );
 
+
             customerWrapper.className =
                 "admin-orders-customer";
+
 
             customerWrapper.append(
                 createTextElement(
@@ -692,6 +1184,7 @@ function renderOrders(
                 )
             );
 
+
             customerCell.append(
                 customerWrapper
             );
@@ -700,13 +1193,16 @@ function renderOrders(
             const locationCell =
                 createCell();
 
+
             const locationWrapper =
                 document.createElement(
                     "div"
                 );
 
+
             locationWrapper.className =
                 "admin-orders-location";
+
 
             locationWrapper.append(
                 createTextElement(
@@ -721,6 +1217,7 @@ function renderOrders(
                 )
             );
 
+
             locationCell.append(
                 locationWrapper
             );
@@ -728,6 +1225,7 @@ function renderOrders(
 
             const totalCell =
                 createCell();
+
 
             totalCell.append(
                 createTextElement(
@@ -743,19 +1241,23 @@ function renderOrders(
             const statusCell =
                 createCell();
 
+
             const status =
                 document.createElement(
                     "span"
                 );
 
+
             status.className =
                 "admin-orders-status " +
                 `admin-orders-status--${order.status}`;
+
 
             status.textContent =
                 getStatusLabel(
                     order.status
                 );
+
 
             statusCell.append(
                 status
@@ -764,6 +1266,7 @@ function renderOrders(
 
             const dateCell =
                 createCell();
+
 
             dateCell.append(
                 createTextElement(
@@ -784,6 +1287,7 @@ function renderOrders(
                 statusCell,
                 dateCell
             );
+
 
             tableBody.append(
                 row
@@ -811,7 +1315,9 @@ function updatePagination(
             "admin-orders-pagination-info"
         );
 
+
     if (pagination) {
+
         adminOrdersState.page =
             pagination.page;
 
@@ -823,7 +1329,9 @@ function updatePagination(
 
         adminOrdersState.pages =
             pagination.pages;
+
     }
+
 
     if (previous) {
         previous.disabled =
@@ -831,13 +1339,16 @@ function updatePagination(
             !pagination.has_previous;
     }
 
+
     if (next) {
         next.disabled =
             !pagination ||
             !pagination.has_next;
     }
 
+
     if (info) {
+
         const pages =
             pagination?.pages || 0;
 
@@ -864,21 +1375,26 @@ async function loadOrders() {
             "admin-orders-empty"
         );
 
+
     setOrdersMessage(
         message,
         ""
     );
 
+
     if (loading) {
         loading.hidden = false;
     }
+
 
     if (emptyState) {
         emptyState.hidden = true;
     }
 
+
     const params =
         new URLSearchParams();
+
 
     params.set(
         "page",
@@ -887,12 +1403,14 @@ async function loadOrders() {
         )
     );
 
+
     params.set(
         "per_page",
         String(
             adminOrdersState.perPage
         )
     );
+
 
     if (
         adminOrdersState.search
@@ -902,6 +1420,7 @@ async function loadOrders() {
             adminOrdersState.search
         );
     }
+
 
     if (
         adminOrdersState.status
@@ -914,15 +1433,18 @@ async function loadOrders() {
 
 
     try {
+
         const response =
             await adminFetch(
                 `/api/admin/orders?${params.toString()}`
             );
 
+
         const data =
             await parseJsonSafely(
                 response
             );
+
 
         if (!response.ok) {
             throw new Error(
@@ -932,6 +1454,7 @@ async function loadOrders() {
             );
         }
 
+
         const orders =
             Array.isArray(
                 data?.data
@@ -939,9 +1462,11 @@ async function loadOrders() {
                 ? data.data
                 : [];
 
+
         renderOrders(
             orders
         );
+
 
         updatePagination(
             data?.pagination
@@ -957,6 +1482,7 @@ async function loadOrders() {
             return;
         }
 
+
         setOrdersMessage(
             message,
             error instanceof Error
@@ -964,9 +1490,11 @@ async function loadOrders() {
                 : "No fue posible cargar los pedidos."
         );
 
+
         if (loading) {
             loading.hidden = true;
         }
+
 
         updatePagination(
             null
@@ -996,6 +1524,7 @@ function setupFilters() {
             "admin-orders-clear-button"
         );
 
+
     if (!form) {
         return;
     }
@@ -1004,20 +1533,25 @@ function setupFilters() {
     form.addEventListener(
         "submit",
         (event) => {
+
             event.preventDefault();
+
 
             adminOrdersState.search =
                 search
                     ? search.value.trim()
                     : "";
 
+
             adminOrdersState.status =
                 status
                     ? status.value
                     : "";
 
+
             adminOrdersState.page =
                 1;
+
 
             loadOrders();
         }
@@ -1025,16 +1559,20 @@ function setupFilters() {
 
 
     if (clearButton) {
+
         clearButton.addEventListener(
             "click",
             () => {
+
                 if (search) {
                     search.value = "";
                 }
 
+
                 if (status) {
                     status.value = "";
                 }
+
 
                 adminOrdersState.search =
                     "";
@@ -1044,6 +1582,7 @@ function setupFilters() {
 
                 adminOrdersState.page =
                     1;
+
 
                 loadOrders();
             }
@@ -1065,9 +1604,11 @@ function setupPagination() {
 
 
     if (previous) {
+
         previous.addEventListener(
             "click",
             () => {
+
                 if (
                     adminOrdersState.page
                     <= 1
@@ -1075,8 +1616,10 @@ function setupPagination() {
                     return;
                 }
 
+
                 adminOrdersState.page -=
                     1;
+
 
                 loadOrders();
             }
@@ -1085,9 +1628,11 @@ function setupPagination() {
 
 
     if (next) {
+
         next.addEventListener(
             "click",
             () => {
+
                 if (
                     adminOrdersState.page
                     >= adminOrdersState.pages
@@ -1095,8 +1640,10 @@ function setupPagination() {
                     return;
                 }
 
+
                 adminOrdersState.page +=
                     1;
+
 
                 loadOrders();
             }
@@ -1111,6 +1658,21 @@ function setupOrderDetailModal() {
             "admin-order-detail-close"
         );
 
+    const confirmButton =
+        getOrderDetailElement(
+            "admin-order-confirm-button"
+        );
+
+    const cancelButton =
+        getOrderDetailElement(
+            "admin-order-cancel-button"
+        );
+
+    const whatsappButton =
+        getOrderDetailElement(
+            "admin-order-whatsapp-button"
+        );
+
     const backdrop =
         document.querySelector(
             "[data-order-detail-close]"
@@ -1118,6 +1680,7 @@ function setupOrderDetailModal() {
 
 
     if (closeButton) {
+
         closeButton.addEventListener(
             "click",
             closeOrderDetail
@@ -1125,7 +1688,47 @@ function setupOrderDetailModal() {
     }
 
 
+    if (confirmButton) {
+
+        confirmButton.addEventListener(
+            "click",
+            () => {
+                updateOrderStatus(
+                    "confirmed"
+                );
+            }
+        );
+    }
+
+
+    if (cancelButton) {
+
+        cancelButton.addEventListener(
+            "click",
+            () => {
+                updateOrderStatus(
+                    "cancelled"
+                );
+            }
+        );
+    }
+
+
+    if (whatsappButton) {
+
+        whatsappButton.addEventListener(
+            "click",
+            () => {
+                contactCustomerByWhatsApp(
+                    adminOrdersState.currentOrder
+                );
+            }
+        );
+    }
+
+
     if (backdrop) {
+
         backdrop.addEventListener(
             "click",
             closeOrderDetail

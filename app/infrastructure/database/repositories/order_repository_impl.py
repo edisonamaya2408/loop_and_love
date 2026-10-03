@@ -125,6 +125,38 @@ class SQLAlchemyOrderRepository(OrderRepository):
 
         return self._to_entity(model)
 
+    def update_status(
+        self,
+        order_id: int,
+        status: str,
+    ) -> OrderEntity | None:
+
+        model = (
+            self.session.query(Order)
+            .filter(
+                Order.id == order_id
+            )
+            .first()
+        )
+
+        if model is None:
+            return None
+
+        model.status = status
+
+        try:
+            self.session.commit()
+
+        except Exception:
+            self.session.rollback()
+            raise
+
+        self.session.refresh(model)
+
+        return self.get_by_id(
+            order_id
+        )
+
     def get_all_paginated(
         self,
         search: str | None = None,

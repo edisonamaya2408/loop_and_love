@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from app.domain.entities.order import (
     ORDER_STATUS_PENDING,
+    ORDER_STATUS_CONFIRMED,
+    ORDER_STATUS_CANCELLED,
     OrderEntity,
     OrderItemEntity,
 )
@@ -145,6 +147,54 @@ class OrderService:
 
         return self.repository.get_by_id(
             order_id
+        )
+
+    def update_admin_order_status(
+        self,
+        order_id: int,
+        status: str,
+    ) -> OrderEntity | None:
+
+        self._validate_id(
+            order_id
+        )
+
+        clean_status = (
+            self._validate_admin_status(
+                status
+            )
+        )
+
+        order = self.repository.get_by_id(
+            order_id
+        )
+
+        if order is None:
+            return None
+
+        current_status = order.status
+
+        if current_status == clean_status:
+            raise ValueError(
+                "El pedido ya tiene ese estado."
+            )
+
+        if current_status != ORDER_STATUS_PENDING:
+            raise ValueError(
+                "Solo se pueden modificar pedidos pendientes."
+            )
+
+        if clean_status not in {
+            ORDER_STATUS_CONFIRMED,
+            ORDER_STATUS_CANCELLED,
+        }:
+            raise ValueError(
+                "El estado solicitado no es válido."
+            )
+
+        return self.repository.update_status(
+            order_id,
+            clean_status,
         )
 
     def list_admin_orders(

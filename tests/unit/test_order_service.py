@@ -656,6 +656,94 @@ def test_list_admin_orders_normalizes_blank_search_to_none():
     ]
 
 
+def test_update_admin_order_status_confirms_pending_order():
+    pending_order = SimpleNamespace(
+        id=15,
+        status="pending",
+    )
+
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    repository.get_by_id = (
+        lambda order_id:
+        pending_order
+        if order_id == 15
+        else None
+    )
+
+    repository.update_status = (
+        lambda order_id, status:
+        SimpleNamespace(
+            id=order_id,
+            status=status,
+        )
+    )
+
+    result = (
+        service.update_admin_order_status(
+            15,
+            "confirmed",
+        )
+    )
+
+    assert result.id == 15
+
+    assert result.status == (
+        "confirmed"
+    )
+
+
+def test_update_admin_order_status_rejects_already_confirmed_order():
+    confirmed_order = SimpleNamespace(
+        id=15,
+        status="confirmed",
+    )
+
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    repository.get_by_id = (
+        lambda order_id:
+        confirmed_order
+        if order_id == 15
+        else None
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Solo se pueden modificar pedidos pendientes",
+    ):
+        service.update_admin_order_status(
+            15,
+            "cancelled",
+        )
+
+
+def test_update_admin_order_status_returns_none_for_missing_order():
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    repository.get_by_id = (
+        lambda order_id: None
+    )
+
+    result = (
+        service.update_admin_order_status(
+            999,
+            "confirmed",
+        )
+    )
+
+    assert result is None
+    
+
 @pytest.mark.parametrize(
     "status",
     [

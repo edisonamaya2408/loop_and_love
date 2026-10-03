@@ -1138,3 +1138,164 @@
     }
 
 }
+
+/* ==================================================
+   ORDER STATUS ACTIONS
+================================================== */
+
+.admin-orders-status-actions {
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        1rem;
+
+    padding:
+        1rem;
+
+    border:
+        1px solid var(--admin-border);
+
+    border-radius:
+        14px;
+
+    background:
+        var(--admin-surface-soft);
+}
+
+
+.admin-orders-status-actions[hidden] {
+    display:
+        none;
+}
+
+
+.admin-orders-status-actions__label {
+    color:
+        var(--admin-text);
+
+    font-size:
+        0.78rem;
+
+    font-weight:
+        800;
+}
+
+
+.admin-orders-status-actions__buttons {
+    display:
+        flex;
+
+    flex-wrap:
+        wrap;
+
+    gap:
+        0.55rem;
+}
+
+
+.admin-orders-button--danger {
+    border-color:
+        #D8A19B;
+
+    background:
+        #F6E2E0;
+
+    color:
+        #95544E;
+}
+
+
+@media (max-width: 640px) {
+
+    .admin-orders-status-actions {
+        align-items:
+            stretch;
+
+        flex-direction:
+            column;
+    }
+
+
+    .admin-orders-status-actions__buttons {
+        display:
+            grid;
+
+        grid-template-columns:
+            1fr 1fr;
+    }
+
+}
+
+/* ==================================================
+   WHATSAPP CUSTOMER CONTACT
+================================================== */
+
+.admin-orders-whatsapp-actions {
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        space-between;
+
+    gap:
+        1rem;
+
+    padding:
+        1rem;
+
+    border:
+        1px solid var(--admin-border);
+
+    border-radius:
+        14px;
+
+    background:
+        var(--admin-surface-soft);
+}
+
+
+.admin-orders-button--whatsapp {
+    border-color:
+        #A8CDB4;
+
+    background:
+        #E3F1E7;
+
+    color:
+        #3F7650;
+}
+
+
+.admin-orders-button--whatsapp:hover:not(:disabled) {
+    background:
+        #D7EBDD;
+}
+
+
+@media (max-width: 640px) {
+
+    .admin-orders-whatsapp-actions {
+        align-items:
+            stretch;
+
+        flex-direction:
+            column;
+    }
+
+
+    .admin-orders-button--whatsapp {
+        width:
+            100%;
+    }
+
+}
