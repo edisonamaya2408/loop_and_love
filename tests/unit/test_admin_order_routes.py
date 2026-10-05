@@ -73,6 +73,7 @@ class FakeOrderService:
                     0,
                     tzinfo=timezone.utc,
                 ),
+                status_history=[],
             ),
             SimpleNamespace(
                 id=14,
@@ -115,6 +116,7 @@ class FakeOrderService:
                     0,
                     tzinfo=timezone.utc,
                 ),
+                status_history=[],
             ),
         ]
 
@@ -220,7 +222,29 @@ class FakeOrderService:
                 "El pedido ya tiene ese estado."
             )
 
+        previous_status = (
+            order.status
+        )
+
         order.status = status
+
+        order.status_history.append(
+            SimpleNamespace(
+                id=(
+                    len(
+                        order.status_history
+                    )
+                    + 1
+                ),
+                previous_status=(
+                    previous_status
+                ),
+                new_status=status,
+                changed_at=datetime.now(
+                    timezone.utc
+                ),
+            )
+        )
 
         return order
 
@@ -597,6 +621,11 @@ def test_get_admin_order_returns_order(
         "pending"
     )
 
+    assert (
+        order["status_history"]
+        == []
+    )
+
     assert order["items"] == [
         {
             "product_id": 1,
@@ -705,6 +734,31 @@ def test_update_admin_order_status_confirms_order(
         "confirmed"
     )
 
+    assert len(
+        data["data"]["status_history"]
+    ) == 1
+
+    assert (
+        data["data"]["status_history"][0][
+            "previous_status"
+        ]
+        == "pending"
+    )
+
+    assert (
+        data["data"]["status_history"][0][
+            "new_status"
+        ]
+        == "confirmed"
+    )
+
+    assert (
+        data["data"]["status_history"][0][
+            "changed_at"
+        ]
+        is not None
+    )
+
 
 def test_update_admin_order_status_cancels_order(
     monkeypatch,
@@ -799,4 +853,113 @@ def test_update_admin_order_status_rejects_invalid_payload(
 
     assert data["error"]["code"] == (
         "INVALID_ORDER_STATUS"
+    )
+
+def test_get_admin_order_returns_status_history(
+    monkeypatch,
+):
+    app, order_service = (
+        _create_test_app(
+            monkeypatch
+        )
+    )
+
+    history_entry = SimpleNamespace(
+        id=1,
+        previous_status=None,
+        new_status="pending",
+        changed_at=datetime(
+            2026,
+            9,
+            29,
+            20,
+            0,
+            tzinfo=timezone.utc,
+        ),
+    )
+
+    order_service.orders[0].status_history = [
+        history_entry
+    ]
+
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/api/admin/orders/15",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    history = data[
+        "data"
+    ][
+        "status_history"
+    ]
+
+    assert history == [
+        {
+            "id": 1,
+            "previous_status": None,
+            "new_status": "pending",
+            "changed_at": (
+                "2026-09-29T20:00:00+00:00"
+            ),
+        }
+    ]
+
+def test_list_admin_orders_does_not_include_status_history(
+    monkeypatch,
+):
+    app, order_service = (
+        _create_test_app(
+            monkeypatch
+        )
+    )
+
+    order_service.orders[0].status_history = [
+        SimpleNamespace(
+            id=1,
+            previous_status=None,
+            new_status="pending",
+            changed_at=datetime(
+                2026,
+                9,
+                29,
+                20,
+                0,
+                tzinfo=timezone.utc,
+            ),
+        )
+    ]
+
+
+    _configure_valid_jwt(
+        monkeypatch
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/api/admin/orders",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    first_order = (
+        response.get_json()
+        ["data"][0]
+    )
+
+    assert (
+        "status_history"
+        not in first_order
     )

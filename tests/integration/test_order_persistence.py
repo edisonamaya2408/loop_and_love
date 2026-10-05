@@ -31,6 +31,9 @@ from app.infrastructure.database.repositories.order_repository_impl import (
 from app.infrastructure.database.repositories.product_repository_impl import (
     SQLAlchemyProductRepository,
 )
+from app.infrastructure.database.models.order_status_history_model import (
+    OrderStatusHistory,
+)
 
 
 def _unique_suffix():
@@ -122,6 +125,29 @@ def test_create_order_persists_header_items_and_total(
             Decimal("75001.50")
         )
         assert len(order.items) == 1
+        assert len(
+            order.status_history
+        ) == 1
+
+        assert (
+            order.status_history[0].order_id
+            == order.id
+        )
+
+        assert (
+            order.status_history[0].previous_status
+            is None
+        )
+
+        assert (
+            order.status_history[0].new_status
+            == "pending"
+        )
+
+        assert (
+            order.status_history[0].changed_at
+            is not None
+        )
         assert order.items[0].product_id == (
             product.id
         )
@@ -163,6 +189,31 @@ def test_create_order_persists_header_items_and_total(
                 OrderItem.order_id == order.id
             )
             .all()
+        )
+
+        persisted_history = (
+            integration_session.query(
+                OrderStatusHistory
+            )
+            .filter(
+                OrderStatusHistory.order_id
+                == order.id
+            )
+            .all()
+        )
+
+        assert len(
+            persisted_history
+        ) == 1
+
+        assert (
+            persisted_history[0].previous_status
+            is None
+        )
+
+        assert (
+            persisted_history[0].new_status
+            == "pending"
         )
 
         assert len(persisted_items) == 1

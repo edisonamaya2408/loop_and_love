@@ -527,73 +527,107 @@ async function loadDashboardSummary() {
             "admin-category-count"
         );
 
+    const orderCount =
+        document.getElementById(
+            "admin-order-count"
+        );
+
+    const pendingOrderCount =
+        document.getElementById(
+            "admin-pending-order-count"
+        );
+
+
     if (
         !productCount &&
-        !categoryCount
+        !categoryCount &&
+        !orderCount &&
+        !pendingOrderCount
     ) {
         return;
     }
 
-    try {
-        const [
-            productsResponse,
-            categoriesResponse,
-        ] = await Promise.all(
+
+    const results =
+        await Promise.allSettled(
             [
                 adminFetch(
                     "/api/admin/products?page=1&per_page=1"
                 ),
+
                 adminFetch(
                     "/api/admin/categories"
+                ),
+
+                adminFetch(
+                    "/api/admin/orders?page=1&per_page=5"
+                ),
+
+                adminFetch(
+                    "/api/admin/orders?page=1&per_page=1&status=pending"
                 ),
             ]
         );
 
-        const productsData =
-            await parseJsonSafely(
-                productsResponse
+
+    const readResponse =
+        async (
+            result
+        ) => {
+
+            if (
+                result.status ===
+                "rejected"
+            ) {
+                throw (
+                    result.reason
+                        instanceof Error
+                        ? result.reason
+                        : new Error(
+                            "No fue posible consultar el servidor."
+                        )
+                );
+            }
+
+
+            const response =
+                result.value;
+
+
+            const data =
+                await parseJsonSafely(
+                    response
+                );
+
+
+            if (
+                !response.ok
+            ) {
+                throw new Error(
+                    getErrorMessage(
+                        data
+                    )
+                );
+            }
+
+
+            return data;
+        };
+
+
+    try {
+
+        const data =
+            await readResponse(
+                results[0]
             );
 
-        const categoriesData =
-            await parseJsonSafely(
-                categoriesResponse
-            );
-
-        if (
-            !productsResponse.ok
-        ) {
-            throw new Error(
-                getErrorMessage(
-                    productsData
-                )
-            );
-        }
-
-        if (
-            !categoriesResponse.ok
-        ) {
-            throw new Error(
-                getErrorMessage(
-                    categoriesData
-                )
-            );
-        }
 
         if (productCount) {
             productCount.textContent =
                 String(
-                    productsData?.pagination?.total ?? 0
-                );
-        }
-
-        if (categoryCount) {
-            categoryCount.textContent =
-                String(
-                    Array.isArray(
-                        categoriesData?.data
-                    )
-                        ? categoriesData.data.length
-                        : 0
+                    data?.pagination?.total
+                    ?? 0
                 );
         }
 
@@ -603,12 +637,361 @@ async function loadDashboardSummary() {
             productCount.textContent =
                 "—";
         }
+    }
+
+
+    try {
+
+        const data =
+            await readResponse(
+                results[1]
+            );
+
+
+        if (categoryCount) {
+            categoryCount.textContent =
+                String(
+                    Array.isArray(
+                        data?.data
+                    )
+                        ? data.data.length
+                        : 0
+                );
+        }
+
+    } catch (error) {
 
         if (categoryCount) {
             categoryCount.textContent =
                 "—";
         }
     }
+
+
+    try {
+
+        const data =
+            await readResponse(
+                results[2]
+            );
+
+
+        if (orderCount) {
+            orderCount.textContent =
+                String(
+                    data?.pagination?.total
+                    ?? 0
+                );
+        }
+
+        renderDashboardRecentOrders(
+            data?.data
+        );
+
+    } catch (error) {
+
+        renderDashboardRecentOrders(
+            []
+        );
+    }
+
+
+    try {
+
+        const data =
+            await readResponse(
+                results[3]
+            );
+
+
+        if (pendingOrderCount) {
+            pendingOrderCount.textContent =
+                String(
+                    data?.pagination?.total
+                    ?? 0
+                );
+        }
+
+    } catch (error) {
+
+        if (pendingOrderCount) {
+            pendingOrderCount.textContent =
+                "—";
+        }
+    }
+}
+
+
+function renderDashboardRecentOrders(
+    orders
+) {
+    const tableBody =
+        document.getElementById(
+            "admin-dashboard-orders-body"
+        );
+
+    const loading =
+        document.getElementById(
+            "admin-dashboard-orders-loading"
+        );
+
+    const empty =
+        document.getElementById(
+            "admin-dashboard-orders-empty"
+        );
+
+
+    if (!tableBody) {
+        return;
+    }
+
+
+    tableBody.replaceChildren();
+
+
+    if (loading) {
+        loading.hidden = true;
+    }
+
+
+    const normalizedOrders =
+        Array.isArray(orders)
+            ? orders
+            : [];
+
+
+    if (!normalizedOrders.length) {
+
+        if (empty) {
+            empty.hidden = false;
+        }
+
+        return;
+    }
+
+
+    if (empty) {
+        empty.hidden = true;
+    }
+
+
+    normalizedOrders.forEach(
+        (order) => {
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            const orderCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const orderLink =
+                document.createElement(
+                    "a"
+                );
+
+
+            orderLink.href =
+                `/admin/orders?order_id=${encodeURIComponent(
+                    order.id
+                )}`;
+
+
+            orderLink.className =
+                "admin-dashboard-orders-table__order";
+
+
+            orderLink.textContent =
+                `#${order.id}`;
+
+
+            orderCell.append(
+                orderLink
+            );
+
+
+            const customerCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const customerName =
+                document.createElement(
+                    "strong"
+                );
+
+
+            customerName.textContent =
+                order.name ||
+                "Sin nombre";
+
+
+            const customerPhone =
+                document.createElement(
+                    "small"
+                );
+
+
+            customerPhone.textContent =
+                order.phone ||
+                "Sin teléfono";
+
+
+            customerCell.append(
+                customerName,
+                customerPhone
+            );
+
+
+            const totalCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            totalCell.textContent =
+                formatDashboardCurrency(
+                    order.total
+                );
+
+            const statusCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const status =
+                document.createElement(
+                    "span"
+                );
+
+
+            status.className =
+                "admin-dashboard-order-status " +
+                `admin-dashboard-order-status--${order.status}`;
+
+
+            status.textContent =
+                getDashboardOrderStatusLabel(
+                    order.status
+                );
+
+
+            statusCell.append(
+                status
+            );
+
+
+            const dateCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            dateCell.textContent =
+                formatDashboardOrderDate(
+                    order.created_at
+                );
+
+
+            row.append(
+                orderCell,
+                customerCell,
+                totalCell,
+                statusCell,
+                dateCell
+            );
+
+
+            tableBody.append(
+                row
+            );
+        }
+    );
+}
+
+
+function formatDashboardCurrency(
+    value
+) {
+    const numericValue =
+        Number(value);
+
+
+    if (
+        !Number.isFinite(
+            numericValue
+        )
+    ) {
+        return "$0";
+    }
+
+
+    return new Intl.NumberFormat(
+        "es-CO",
+        {
+            style: "currency",
+            currency: "COP",
+            maximumFractionDigits: 0,
+        }
+    ).format(
+        numericValue
+    );
+}
+
+
+function getDashboardOrderStatusLabel(
+    status
+) {
+    const labels = {
+        pending: "Pendiente",
+        confirmed: "Confirmado",
+        cancelled: "Cancelado",
+    };
+
+
+    return (
+        labels[status]
+        || status
+        || "Sin estado"
+    );
+}
+
+
+function formatDashboardOrderDate(
+    value
+) {
+    if (!value) {
+        return "—";
+    }
+
+
+    const date =
+        new Date(value);
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return "—";
+    }
+
+
+    return date.toLocaleString(
+        "es-CO",
+        {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }
+    );
 }
 
 

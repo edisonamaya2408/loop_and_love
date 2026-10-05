@@ -348,6 +348,189 @@ function getStatusLabel(
 }
 
 
+function renderOrderStatusHistory(
+    history
+) {
+    const container =
+        getOrderDetailElement(
+            "admin-order-status-history"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.replaceChildren();
+
+
+    const normalizedHistory =
+        Array.isArray(
+            history
+        )
+            ? [...history].reverse()
+            : [];
+
+
+    if (
+        !normalizedHistory.length
+    ) {
+
+        container.append(
+            createTextElement(
+                "p",
+                "admin-orders-status-history__empty",
+                "No hay historial de estados disponible."
+            )
+        );
+
+        return;
+    }
+
+
+    normalizedHistory.forEach(
+        (
+            entry,
+            index
+        ) => {
+
+            const item =
+                document.createElement(
+                    "article"
+                );
+
+
+            item.className =
+                "admin-orders-status-history__item";
+
+
+            if (
+                index ===
+                normalizedHistory.length - 1
+            ) {
+                item.classList.add(
+                    "admin-orders-status-history__item--last"
+                );
+            }
+
+
+            const marker =
+                document.createElement(
+                    "span"
+                );
+
+
+            marker.className =
+                "admin-orders-status-history__marker";
+
+
+            marker.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+
+
+            const content =
+                document.createElement(
+                    "div"
+                );
+
+
+            content.className =
+                "admin-orders-status-history__content";
+
+
+            const transition =
+                document.createElement(
+                    "strong"
+                );
+
+
+            const previousStatus =
+                entry?.previous_status;
+
+
+            const newStatus =
+                entry?.new_status;
+
+
+            if (
+                previousStatus
+            ) {
+                transition.textContent =
+                    `${getStatusLabel(
+                        previousStatus
+                    )} → ${getStatusLabel(
+                        newStatus
+                    )}`;
+            } else {
+                transition.textContent =
+                    `Pedido creado · ${getStatusLabel(
+                        newStatus
+                    )}`;
+            }
+
+
+            const status =
+                document.createElement(
+                    "span"
+                );
+
+
+            status.className =
+                "admin-orders-status " +
+                `admin-orders-status--${newStatus}`;
+
+
+            status.textContent =
+                getStatusLabel(
+                    newStatus
+                );
+
+
+            const date =
+                document.createElement(
+                    "time"
+                );
+
+
+            date.className =
+                "admin-orders-status-history__date";
+
+
+            date.dateTime =
+                entry?.changed_at
+                || "";
+
+
+            date.textContent =
+                formatDate(
+                    entry?.changed_at
+                );
+
+
+            content.append(
+                transition,
+                status,
+                date
+            );
+
+
+            item.append(
+                marker,
+                content
+            );
+
+
+            container.append(
+                item
+            );
+        }
+    );
+}
+
+
 function renderOrderDetail(
     order
 ) {
@@ -467,6 +650,10 @@ function renderOrderDetail(
 
     updateOrderStatusActions(
         order.status
+    );
+
+    renderOrderStatusHistory(
+        order.status_history
     );
 
     if (total) {
@@ -1751,11 +1938,120 @@ function setupOrderDetailModal() {
 }
 
 
+function applyOrderFiltersFromQueryString() {
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    const statusParam =
+        params.get(
+            "status"
+        );
+
+
+    if (
+        !statusParam
+    ) {
+        return;
+    }
+
+
+    const validStatuses = new Set(
+        [
+            "pending",
+            "confirmed",
+            "cancelled",
+        ]
+    );
+
+
+    if (
+        !validStatuses.has(
+            statusParam
+        )
+    ) {
+        return;
+    }
+
+
+    const statusSelect =
+        getOrdersElement(
+            "admin-orders-status"
+        );
+
+
+    adminOrdersState.status =
+        statusParam;
+
+    adminOrdersState.page =
+        1;
+
+
+    if (statusSelect) {
+        statusSelect.value =
+            statusParam;
+    }
+}
+
+
+function openOrderFromQueryString() {
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    const orderId =
+        params.get(
+            "order_id"
+        );
+
+
+    if (!orderId) {
+        return;
+    }
+
+
+    if (
+        !/^\d+$/.test(
+            orderId
+        )
+    ) {
+        return;
+    }
+
+
+    const numericOrderId =
+        Number(
+            orderId
+        );
+
+
+    if (
+        !Number.isSafeInteger(
+            numericOrderId
+        ) ||
+        numericOrderId <= 0
+    ) {
+        return;
+    }
+
+
+    openOrderDetail(
+        numericOrderId
+    );
+}
+
+
 function initializeAdminOrders() {
     setupFilters();
     setupPagination();
     setupOrderDetailModal();
+    applyOrderFiltersFromQueryString();
     loadOrders();
+    openOrderFromQueryString();
 }
 
 

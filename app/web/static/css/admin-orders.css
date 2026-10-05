@@ -1299,3 +1299,170 @@
     }
 
 }
+
+/* ==================================================
+   ORDER STATUS HISTORY
+================================================== */
+
+.admin-orders-status-history {
+    display:
+        grid;
+
+    gap:
+        0;
+}
+
+
+.admin-orders-status-history__item {
+    position:
+        relative;
+
+    display:
+        grid;
+
+    grid-template-columns:
+        18px minmax(0, 1fr);
+
+    column-gap:
+        0.85rem;
+
+    min-height:
+        76px;
+}
+
+
+.admin-orders-status-history__item:not(
+    .admin-orders-status-history__item--last
+) .admin-orders-status-history__marker::after {
+    content:
+        "";
+
+    position:
+        absolute;
+
+    top:
+        18px;
+
+    bottom:
+        -1px;
+
+    left:
+        8px;
+
+    width:
+        1px;
+
+    background:
+        var(--admin-border);
+}
+
+
+.admin-orders-status-history__marker {
+    position:
+        relative;
+
+    z-index:
+        1;
+
+    width:
+        17px;
+
+    height:
+        17px;
+
+    margin-top:
+        2px;
+
+    border:
+        3px solid var(--admin-surface);
+
+    border-radius:
+        50%;
+
+    background:
+        var(--admin-brown);
+
+    box-shadow:
+        0 0 0 1px var(--admin-border);
+}
+
+
+.admin-orders-status-history__content {
+    display:
+        grid;
+
+    align-content:
+        start;
+
+    justify-items:
+        start;
+
+    gap:
+        0.35rem;
+
+    padding-bottom:
+        1rem;
+}
+
+
+.admin-orders-status-history__content strong {
+    color:
+        var(--admin-brown);
+
+    font-size:
+        0.82rem;
+
+    line-height:
+        1.4;
+}
+
+
+.admin-orders-status-history__date {
+    color:
+        var(--admin-text-soft);
+
+    font-size:
+        0.7rem;
+}
+
+
+.admin-orders-status-history__empty {
+    margin:
+        0;
+
+    color:
+        var(--admin-text-soft);
+
+    font-size:
+        0.8rem;
+}
+
+
+@media (max-width: 640px) {
+
+    .admin-orders-status-history__item {
+        grid-template-columns:
+            16px minmax(0, 1fr);
+
+        column-gap:
+            0.7rem;
+    }
+
+
+    .admin-orders-status-history__marker {
+        width:
+            15px;
+
+        height:
+            15px;
+    }
+
+
+    .admin-orders-status-history__item:not(
+        .admin-orders-status-history__item--last
+    ) .admin-orders-status-history__marker::after {
+        left:
+            7px;
+    }
+
+}

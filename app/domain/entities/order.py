@@ -2,6 +2,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
+from app.domain.entities.order_status_history import (
+    OrderStatusHistoryEntity,
+)
+
 
 ORDER_STATUS_PENDING = "pending"
 ORDER_STATUS_CONFIRMED = "confirmed"
@@ -38,3 +42,9 @@ class OrderEntity:
     )
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    status_history: list[
+        OrderStatusHistoryEntity
+    ] = field(
+        default_factory=list
+    )

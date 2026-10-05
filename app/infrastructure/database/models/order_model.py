@@ -2,6 +2,9 @@ from datetime import datetime, timezone
 
 from app.extensions import db
 from app.infrastructure.database.types import UTCDateTime
+from app.infrastructure.database.models.order_status_history_model import (
+    OrderStatusHistory,
+)
 
 
 class Order(db.Model):
@@ -81,6 +84,18 @@ class Order(db.Model):
         cascade="all, delete-orphan",
         lazy="selectin",
         passive_deletes=True,
+    )
+
+    status_history = db.relationship(
+        OrderStatusHistory,
+        back_populates="order",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+        order_by=(
+            OrderStatusHistory.changed_at,
+            OrderStatusHistory.id,
+        ),
     )
 
     def __repr__(self):

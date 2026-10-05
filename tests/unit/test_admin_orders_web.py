@@ -669,3 +669,395 @@ def test_admin_orders_page_keeps_status_actions_separate_from_customer_whatsapp(
         "Contactar por WhatsApp"
         in body
     )
+
+def test_admin_orders_page_supports_opening_order_from_query_string(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "function openOrderFromQueryString("
+        in normalized_body
+    )
+
+    assert (
+        "new URLSearchParams("
+        in normalized_body
+    )
+
+    assert (
+        'params.get(\n'
+        in normalized_body
+    )
+
+    assert (
+        '"order_id"'
+        in normalized_body
+    )
+
+    assert (
+        "openOrderDetail("
+        in normalized_body
+    )
+
+
+def test_admin_orders_page_validates_order_id_query_parameter(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "!/^\\d+$/.test("
+        in normalized_body
+    )
+
+    assert (
+        "Number.isSafeInteger("
+        in normalized_body
+    )
+
+    assert (
+        "numericOrderId <= 0"
+        in normalized_body
+    )
+
+def test_admin_orders_supports_status_filter_from_query_string(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "function applyOrderFiltersFromQueryString("
+        in normalized_body
+    )
+
+    assert (
+        "new URLSearchParams("
+        in normalized_body
+    )
+
+    assert (
+        'params.get(\n'
+        in normalized_body
+    )
+
+    assert (
+        '"status"'
+        in normalized_body
+    )
+
+    assert (
+        '"pending"'
+        in normalized_body
+    )
+
+    assert (
+        '"confirmed"'
+        in normalized_body
+    )
+
+    assert (
+        '"cancelled"'
+        in normalized_body
+    )
+
+    assert (
+        'statusSelect.value ='
+        in normalized_body
+    )
+
+
+def test_admin_orders_initializes_query_filters_before_loading_orders(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "applyOrderFiltersFromQueryString();"
+        in normalized_body
+    )
+
+    initialize_index = (
+        normalized_body.index(
+            "function initializeAdminOrders()"
+        )
+    )
+
+    apply_index = (
+        normalized_body.index(
+            "applyOrderFiltersFromQueryString();",
+            initialize_index,
+        )
+    )
+
+    load_index = (
+        normalized_body.index(
+            "loadOrders();",
+            initialize_index,
+        )
+    )
+
+    assert (
+        apply_index < load_index
+    )
+
+def test_admin_orders_page_includes_status_history_section(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/orders"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        "Historial del pedido"
+        in body
+    )
+
+    assert (
+        'id="admin-order-status-history"'
+        in body
+    )
+
+def test_admin_orders_renders_status_history_from_order_detail(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "function renderOrderStatusHistory("
+        in normalized_body
+    )
+
+    assert (
+        "order.status_history"
+        in normalized_body
+    )
+
+    assert (
+        "previous_status"
+        in normalized_body
+    )
+
+    assert (
+        "new_status"
+        in normalized_body
+    )
+
+    assert (
+        "changed_at"
+        in normalized_body
+    )
+
+    assert (
+        "getStatusLabel("
+        in normalized_body
+    )
+
+    assert (
+        "formatDate("
+        in normalized_body
+    )
+
+def test_admin_orders_status_history_shows_most_recent_first(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "[...history].reverse()"
+        in normalized_body
+    )
+
+    assert (
+        "admin-orders-status-history__item--last"
+        in normalized_body
+    )

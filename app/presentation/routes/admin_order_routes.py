@@ -39,6 +39,25 @@ def _order_to_dict(order):
         "address": order.address,
         "observations": order.observations,
         "status": order.status,
+        "status_history": [
+            {
+                "id": history.id,
+                "previous_status": (
+                    history.previous_status
+                ),
+                "new_status": (
+                    history.new_status
+                ),
+                "changed_at": (
+                    history.changed_at.isoformat()
+                    if history.changed_at
+                    else None
+                ),
+            }
+            for history in (
+                order.status_history
+            )
+        ],
         "items": [
             {
                 "product_id": item.product_id,
@@ -67,6 +86,42 @@ def _order_to_dict(order):
         ),
     }
 
+def _order_list_to_dict(order):
+    return {
+        "id": order.id,
+        "name": order.customer_name,
+        "phone": order.phone,
+        "city": order.city,
+        "address": order.address,
+        "observations": order.observations,
+        "status": order.status,
+        "items": [
+            {
+                "product_id": item.product_id,
+                "code": item.product_code,
+                "name": item.product_name,
+                "unit_price": (
+                    f"{item.unit_price:.2f}"
+                ),
+                "quantity": item.quantity,
+                "line_total": (
+                    f"{item.line_total:.2f}"
+                ),
+            }
+            for item in order.items
+        ],
+        "total": f"{order.total:.2f}",
+        "created_at": (
+            order.created_at.isoformat()
+            if order.created_at
+            else None
+        ),
+        "updated_at": (
+            order.updated_at.isoformat()
+            if order.updated_at
+            else None
+        ),
+    }
 
 @admin_orders_bp.get("/<int:order_id>")
 @jwt_required
@@ -201,7 +256,7 @@ def list_admin_orders():
         {
             "success": True,
             "data": [
-                _order_to_dict(
+                _order_list_to_dict(
                     order
                 )
                 for order in result.items

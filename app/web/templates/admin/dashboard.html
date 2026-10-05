@@ -21,8 +21,8 @@ Loop & Love | Dashboard
         </h1>
 
         <p>
-            Gestiona el catálogo y prepara tu tienda
-            para recibir pedidos.
+            Gestiona el catálogo y consulta los pedidos
+            recibidos desde el portal B2B.
         </p>
 
     </div>
@@ -97,12 +97,12 @@ Loop & Love | Dashboard
 
         </div>
 
-        <strong class="admin-kpi-card__value">
-            Próximo
+        <strong class="admin-kpi-card__value" id="admin-order-count">
+            —
         </strong>
 
         <span class="admin-kpi-card__helper">
-            Flujo B2B + WhatsApp
+            Pedidos registrados
         </span>
 
     </article>
@@ -113,21 +113,24 @@ Loop & Love | Dashboard
         <div class="admin-kpi-card__top">
 
             <span class="admin-kpi-card__label">
-                WhatsApp
+                Pendientes
             </span>
 
             <span class="admin-kpi-card__icon" aria-hidden="true">
-                ☎
+                ◷
             </span>
 
         </div>
 
-        <strong class="admin-kpi-card__value">
-            Próximo
+        <strong>
+            <a href="{{ url_for('web.admin_orders_page') }}?status=pending"
+                class="admin-kpi-card__value admin-kpi-card__value--link" id="admin-pending-order-count">
+                —
+            </a>
         </strong>
 
         <span class="admin-kpi-card__helper">
-            Pedidos desde catálogo
+            Pedidos pendientes de gestión
         </span>
 
     </article>
@@ -323,6 +326,94 @@ Loop & Love | Dashboard
         </div>
 
     </article>
+
+</section>
+
+
+<section class="admin-panel admin-dashboard-recent-orders">
+
+    <div class="admin-panel__header">
+
+        <div>
+
+            <span class="eyebrow">
+                PEDIDOS
+            </span>
+
+            <h2>
+                Pedidos recientes
+            </h2>
+
+        </div>
+
+
+        <a href="{{ url_for('web.admin_orders_page') }}" class="admin-panel__action">
+            Ver todos los pedidos
+        </a>
+
+    </div>
+
+
+    <div id="admin-dashboard-orders-message" class="form-message" hidden role="alert" aria-live="polite"></div>
+
+
+    <div class="admin-dashboard-orders-wrapper">
+
+        <table class="admin-dashboard-orders-table">
+
+            <thead>
+
+                <tr>
+
+                    <th scope="col">
+                        Pedido
+                    </th>
+
+                    <th scope="col">
+                        Cliente
+                    </th>
+
+                    <th scope="col">
+                        Total
+                    </th>
+
+                    <th scope="col">
+                        Estado
+                    </th>
+
+                    <th scope="col">
+                        Fecha
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="admin-dashboard-orders-body">
+            </tbody>
+
+        </table>
+
+
+        <div class="admin-dashboard-orders-loading" id="admin-dashboard-orders-loading">
+            Cargando pedidos...
+        </div>
+
+
+        <div class="admin-dashboard-orders-empty" id="admin-dashboard-orders-empty" hidden>
+
+            <strong>
+                No hay pedidos registrados.
+            </strong>
+
+            <small>
+                Los nuevos pedidos aparecerán aquí.
+            </small>
+
+        </div>
+
+    </div>
 
 </section>
 

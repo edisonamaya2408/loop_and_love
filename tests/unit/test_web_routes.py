@@ -551,3 +551,354 @@ def test_admin_login_displays_setup_confirmation(
         "Administrador creado correctamente"
         in body
     )
+
+def test_admin_dashboard_includes_live_order_kpis(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/dashboard"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        'id="admin-order-count"'
+        in body
+    )
+
+    assert (
+        'id="admin-pending-order-count"'
+        in body
+    )
+
+    assert (
+        'href="/admin/orders?status=pending"'
+        in body
+    )
+
+    assert (
+        "Pedidos registrados"
+        in body
+    )
+
+    assert (
+        "Pedidos pendientes de gestión"
+        in body
+    )
+
+    assert (
+        "Flujo B2B + WhatsApp"
+        not in body
+    )
+
+    assert (
+        "Pedidos desde catálogo"
+        not in body
+    )
+
+
+def test_admin_dashboard_loads_dashboard_order_endpoints(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        "/api/admin/orders?page=1&per_page=5"
+        in body
+    )
+
+    assert (
+        "/api/admin/orders?page=1&per_page=1&status=pending"
+        in body
+    )
+
+    assert (
+        "admin-order-count"
+        in body
+    )
+
+    assert (
+        "admin-pending-order-count"
+        in body
+    )
+
+    assert (
+        "Promise.allSettled"
+        in body
+    )
+
+def test_admin_dashboard_includes_recent_orders_section(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/dashboard"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        "Pedidos recientes"
+        in body
+    )
+
+    assert (
+        'id="admin-dashboard-orders-body"'
+        in body
+    )
+
+    assert (
+        'id="admin-dashboard-orders-loading"'
+        in body
+    )
+
+    assert (
+        'id="admin-dashboard-orders-empty"'
+        in body
+    )
+
+    assert (
+        "Ver todos los pedidos"
+        in body
+    )
+
+
+def test_admin_dashboard_uses_recent_orders_endpoint(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "/api/admin/orders?page=1&per_page=5"
+        in normalized_body
+    )
+
+    assert (
+        "renderDashboardRecentOrders"
+        in normalized_body
+    )
+
+    assert (
+        "getDashboardOrderStatusLabel"
+        in normalized_body
+    )
+
+    assert (
+        "admin-dashboard-orders-body"
+        in normalized_body
+    )
+
+    assert (
+        "`/admin/orders?order_id=${encodeURIComponent("
+        in normalized_body
+    )
+
+def test_admin_dashboard_defines_recent_order_currency_formatter(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "function formatDashboardCurrency("
+        in normalized_body
+    )
+
+    assert (
+        "formatDashboardCurrency("
+        in normalized_body
+    )
+
+    assert (
+        'currency: "COP"'
+        in normalized_body
+    )
+
+    assert (
+        "Intl.NumberFormat"
+        in normalized_body
+    )
+
+def test_admin_dashboard_pending_kpi_links_to_filtered_orders(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/dashboard"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        'id="admin-pending-order-count"'
+        in body
+    )
+
+    assert (
+        'href="/admin/orders?status=pending"'
+        in body
+    )
+
+    assert (
+        "Pedidos pendientes de gestión"
+        in body
+    )

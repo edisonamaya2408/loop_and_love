@@ -1530,3 +1530,330 @@
     }
 
 }
+
+
+/* ==================================================
+   DASHBOARD RECENT ORDERS
+================================================== */
+
+.admin-dashboard-recent-orders {
+    margin-top:
+        1rem;
+}
+
+
+.admin-panel__action {
+    align-self:
+        center;
+
+    min-height:
+        40px;
+
+    padding:
+        0.55rem 0.8rem;
+
+    display:
+        inline-flex;
+
+    align-items:
+        center;
+
+    justify-content:
+        center;
+
+    border:
+        1px solid var(--admin-border);
+
+    border-radius:
+        10px;
+
+    background:
+        var(--admin-surface);
+
+    color:
+        var(--admin-brown);
+
+    font-size:
+        0.74rem;
+
+    font-weight:
+        800;
+
+    text-decoration:
+        none;
+
+    white-space:
+        nowrap;
+}
+
+
+.admin-panel__action:hover {
+    background:
+        var(--admin-surface-soft);
+
+    border-color:
+        var(--admin-rose);
+}
+
+
+.admin-dashboard-orders-wrapper {
+    margin-top:
+        1.25rem;
+
+    overflow-x:
+        auto;
+}
+
+
+.admin-dashboard-orders-table {
+    width:
+        100%;
+
+    border-collapse:
+        collapse;
+
+    min-width:
+        720px;
+}
+
+
+.admin-dashboard-orders-table th {
+    padding:
+        0.75rem;
+
+    border-bottom:
+        1px solid var(--admin-border);
+
+    color:
+        var(--admin-text-soft);
+
+    font-size:
+        0.68rem;
+
+    font-weight:
+        900;
+
+    letter-spacing:
+        0.08em;
+
+    text-align:
+        left;
+
+    text-transform:
+        uppercase;
+}
+
+
+.admin-dashboard-orders-table td {
+    padding:
+        0.85rem 0.75rem;
+
+    border-bottom:
+        1px solid var(--admin-border);
+
+    color:
+        var(--admin-text);
+
+    font-size:
+        0.78rem;
+
+    vertical-align:
+        middle;
+}
+
+
+.admin-dashboard-orders-table tbody tr:last-child td {
+    border-bottom:
+        0;
+}
+
+
+.admin-dashboard-orders-table__order {
+    color:
+        var(--admin-brown);
+
+    font-weight:
+        900;
+
+    text-decoration:
+        none;
+}
+
+
+.admin-dashboard-orders-table__order:hover {
+    color:
+        var(--admin-rose-deep);
+
+    text-decoration:
+        underline;
+}
+
+
+.admin-dashboard-orders-table td strong {
+    display:
+        block;
+
+    color:
+        var(--admin-brown);
+
+    font-size:
+        0.78rem;
+}
+
+
+.admin-dashboard-orders-table td small {
+    display:
+        block;
+
+    margin-top:
+        0.2rem;
+
+    color:
+        var(--admin-text-soft);
+
+    font-size:
+        0.68rem;
+}
+
+
+.admin-dashboard-order-status {
+    display:
+        inline-flex;
+
+    align-items:
+        center;
+
+    min-height:
+        30px;
+
+    padding:
+        0.3rem 0.55rem;
+
+    border:
+        1px solid var(--admin-border);
+
+    border-radius:
+        999px;
+
+    font-size:
+        0.68rem;
+
+    font-weight:
+        900;
+}
+
+
+.admin-dashboard-order-status--pending {
+    background:
+        #FFF4DD;
+
+    border-color:
+        #E7C98E;
+
+    color:
+        #876321;
+}
+
+
+.admin-dashboard-order-status--confirmed {
+    background:
+        #E5F1E8;
+
+    border-color:
+        #A8CDB4;
+
+    color:
+        #3F7650;
+}
+
+
+.admin-dashboard-order-status--cancelled {
+    background:
+        #F6E2E0;
+
+    border-color:
+        #D8A19B;
+
+    color:
+        #95544E;
+}
+
+
+.admin-dashboard-orders-loading,
+.admin-dashboard-orders-empty {
+    padding:
+        1.5rem 0;
+
+    color:
+        var(--admin-text-soft);
+
+    text-align:
+        center;
+}
+
+
+.admin-dashboard-orders-empty strong {
+    display:
+        block;
+
+    color:
+        var(--admin-brown);
+
+    font-size:
+        0.82rem;
+}
+
+
+.admin-dashboard-orders-empty small {
+    display:
+        block;
+
+    margin-top:
+        0.3rem;
+
+    font-size:
+        0.72rem;
+}
+
+
+@media (max-width: 640px) {
+
+    .admin-panel__header {
+        align-items:
+            flex-start;
+
+        flex-direction:
+            column;
+    }
+
+
+    .admin-panel__action {
+        align-self:
+            flex-start;
+    }
+
+}
+
+/* ==================================================
+   DASHBOARD KPI LINK
+================================================== */
+
+.admin-kpi-card__value--link {
+    display:
+        block;
+
+    color:
+        var(--admin-brown);
+
+    text-decoration:
+        none;
+}
+
+
+.admin-kpi-card__value--link:hover {
+    color:
+        var(--admin-rose-deep);
+
+    text-decoration:
+        underline;
+}

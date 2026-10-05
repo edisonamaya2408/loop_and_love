@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session, selectinload
 
@@ -8,6 +9,10 @@ from app.domain.entities.order import (
     OrderEntity,
     OrderItemEntity,
 )
+from app.domain.entities.order_status_history import (
+    OrderStatusHistoryEntity,
+)
+
 from app.domain.repositories.order_repository import (
     OrderRepository,
 )
@@ -15,6 +20,9 @@ from app.extensions import db
 from app.infrastructure.database.models.order_model import (
     Order,
     OrderItem,
+)
+from app.infrastructure.database.models.order_status_history_model import (
+    OrderStatusHistory,
 )
 
 
@@ -30,7 +38,9 @@ class SQLAlchemyOrderRepository(OrderRepository):
     @staticmethod
     def _to_entity(
         model: Order,
+        include_status_history: bool = True,
     ) -> OrderEntity:
+
         items = [
             OrderItemEntity(
                 id=item.id,
@@ -48,6 +58,27 @@ class SQLAlchemyOrderRepository(OrderRepository):
             for item in model.items
         ]
 
+
+        status_history = []
+
+        if include_status_history:
+
+            status_history = [
+                OrderStatusHistoryEntity(
+                    id=history.id,
+                    order_id=history.order_id,
+                    previous_status=(
+                        history.previous_status
+                    ),
+                    new_status=(
+                        history.new_status
+                    ),
+                    changed_at=history.changed_at,
+                )
+                for history in model.status_history
+            ]
+
+
         return OrderEntity(
             id=model.id,
             customer_name=model.customer_name,
@@ -62,12 +93,14 @@ class SQLAlchemyOrderRepository(OrderRepository):
             items=items,
             created_at=model.created_at,
             updated_at=model.updated_at,
+            status_history=status_history,
         )
 
     def create(
         self,
         order: OrderEntity,
     ) -> OrderEntity:
+
         model = Order(
             customer_name=order.customer_name,
             phone=order.phone,
@@ -90,29 +123,54 @@ class SQLAlchemyOrderRepository(OrderRepository):
             for item in order.items
         ]
 
-        self.session.add(model)
+        self.session.add(
+            model
+        )
 
         try:
+
+            self.session.flush()
+
+
+            self.session.add(
+                OrderStatusHistory(
+                    order_id=model.id,
+                    previous_status=None,
+                    new_status=model.status,
+                    changed_at=(
+                        model.created_at
+                    ),
+                )
+            )
+
+
             self.session.commit()
 
         except Exception:
+
             self.session.rollback()
+
             raise
 
-        self.session.refresh(model)
 
-        return self._to_entity(model)
+        return self.get_by_id(
+            model.id
+        )
 
     def get_by_id(
         self,
         order_id: int,
     ) -> OrderEntity | None:
+
         model = (
             self.session.query(Order)
             .options(
                 selectinload(
                     Order.items
-                )
+                ),
+                selectinload(
+                    Order.status_history
+                ),
             )
             .filter(
                 Order.id == order_id
@@ -123,7 +181,10 @@ class SQLAlchemyOrderRepository(OrderRepository):
         if model is None:
             return None
 
-        return self._to_entity(model)
+        return self._to_entity(
+            model,
+            include_status_history=True,
+        )
 
     def update_status(
         self,
@@ -142,16 +203,39 @@ class SQLAlchemyOrderRepository(OrderRepository):
         if model is None:
             return None
 
+
+        previous_status = (
+            model.status
+        )
+
+
         model.status = status
 
+
+        self.session.add(
+            OrderStatusHistory(
+                order_id=order_id,
+                previous_status=previous_status,
+                new_status=status,
+                changed_at=(
+                    datetime.now(
+                        timezone.utc
+                    )
+                ),
+            )
+        )
+
+
         try:
+
             self.session.commit()
 
         except Exception:
+
             self.session.rollback()
+
             raise
 
-        self.session.refresh(model)
 
         return self.get_by_id(
             order_id
@@ -216,7 +300,8 @@ class SQLAlchemyOrderRepository(OrderRepository):
 
         orders = [
             self._to_entity(
-                model
+                model,
+                include_status_history=False,
             )
             for model in models
         ]

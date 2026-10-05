@@ -2348,6 +2348,76 @@
           }
         }
       },
+      "AdminOrderStatusHistoryItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "previous_status",
+          "new_status",
+          "changed_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "previous_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ],
+            "nullable": true
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminOrderResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Order"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "status_history"
+                ],
+                "properties": {
+                  "status_history": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/AdminOrderStatusHistoryItem"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "OrderCreateItem": {
         "type": "object",
         "additionalProperties": false,
