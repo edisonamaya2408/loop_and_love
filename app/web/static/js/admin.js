@@ -4,6 +4,17 @@
 const ADMIN_TOKEN_KEY =
     "loop_and_love.admin.access_token";
 
+const ADMIN_DATA_REFRESH_INTERVAL_MS =
+    30000;
+
+
+let adminDashboardRefreshTimer =
+    null;
+
+
+let adminDashboardVisibilityBound =
+    false;
+
 
 function getAdminToken() {
     return sessionStorage.getItem(
@@ -995,6 +1006,62 @@ function formatDashboardOrderDate(
 }
 
 
+function refreshDashboardData() {
+    if (
+        document.visibilityState !==
+        "visible"
+    ) {
+        return;
+    }
+
+    void loadDashboardSummary();
+}
+
+
+function handleDashboardVisibilityChange() {
+    if (
+        document.visibilityState ===
+        "visible"
+    ) {
+        refreshDashboardData();
+    }
+}
+
+
+function setupDashboardAutoRefresh() {
+    if (
+        adminDashboardRefreshTimer !==
+        null
+    ) {
+        return;
+    }
+
+
+    adminDashboardRefreshTimer =
+        window.setInterval(
+            refreshDashboardData,
+            ADMIN_DATA_REFRESH_INTERVAL_MS
+        );
+
+
+    if (
+        adminDashboardVisibilityBound
+    ) {
+        return;
+    }
+
+
+    adminDashboardVisibilityBound =
+        true;
+
+
+    document.addEventListener(
+        "visibilitychange",
+        handleDashboardVisibilityChange
+    );
+}
+
+
 function setupAdminDashboard() {
     const dashboard =
         document.getElementById(
@@ -1011,6 +1078,8 @@ function setupAdminDashboard() {
     }
 
     void loadDashboardSummary();
+
+    setupDashboardAutoRefresh();
 }
 
 

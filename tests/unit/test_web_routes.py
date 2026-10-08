@@ -902,3 +902,149 @@ def test_admin_dashboard_pending_kpi_links_to_filtered_orders(
         "Pedidos pendientes de gestión"
         in body
     )
+
+
+def test_admin_dashboard_configures_auto_refresh(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "ADMIN_DATA_REFRESH_INTERVAL_MS"
+        in normalized_body
+    )
+
+    assert (
+        "30000"
+        in normalized_body
+    )
+
+    assert (
+        "function setupDashboardAutoRefresh("
+        in normalized_body
+    )
+
+    assert (
+        "window.setInterval("
+        in normalized_body
+    )
+
+    assert (
+        "refreshDashboardData"
+        in normalized_body
+    )
+
+    assert (
+        "document.visibilityState"
+        in normalized_body
+    )
+
+    assert (
+        "visibilitychange"
+        in normalized_body
+    )
+
+
+def test_admin_dashboard_starts_auto_refresh_after_initial_load(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    setup_index = (
+        normalized_body.index(
+            "function setupAdminDashboard()"
+        )
+    )
+
+    initial_load_index = (
+        normalized_body.index(
+            "void loadDashboardSummary();",
+            setup_index,
+        )
+    )
+
+    auto_refresh_index = (
+        normalized_body.index(
+            "setupDashboardAutoRefresh();",
+            setup_index,
+        )
+    )
+
+    assert (
+        initial_load_index <
+        auto_refresh_index
+    )

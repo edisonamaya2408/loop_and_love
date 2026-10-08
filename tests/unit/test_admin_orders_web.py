@@ -1061,3 +1061,183 @@ def test_admin_orders_status_history_shows_most_recent_first(
         "admin-orders-status-history__item--last"
         in normalized_body
     )
+
+
+def test_admin_orders_configures_auto_refresh(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "autoRefreshEnabled"
+        in normalized_body
+    )
+
+    assert (
+        "autoRefreshTimer"
+        in normalized_body
+    )
+
+    assert (
+        "requestInFlight"
+        in normalized_body
+    )
+
+    assert (
+        "function setupAdminOrdersAutoRefresh("
+        in normalized_body
+    )
+
+    assert (
+        "window.setInterval("
+        in normalized_body
+    )
+
+    assert (
+        "document.visibilityState"
+        in normalized_body
+    )
+
+    assert (
+        "visibilitychange"
+        in normalized_body
+    )
+
+
+def test_admin_orders_uses_silent_refresh_for_auto_update(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    assert (
+        "loadOrders(\n"
+        in normalized_body
+    )
+
+    assert (
+        "silent: true"
+        in normalized_body
+    )
+
+    assert (
+        "Una actualización automática no debe borrar"
+        in normalized_body
+    )
+
+
+def test_admin_orders_initializes_auto_refresh(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace(
+            "\r\n",
+            "\n",
+        )
+        .replace(
+            "\r",
+            "\n",
+        )
+    )
+
+    initialize_index = (
+        normalized_body.index(
+            "function initializeAdminOrders()"
+        )
+    )
+
+    load_index = (
+        normalized_body.index(
+            "void loadOrders();",
+            initialize_index,
+        )
+    )
+
+    refresh_index = (
+        normalized_body.index(
+            "setupAdminOrdersAutoRefresh();",
+            initialize_index,
+        )
+    )
+
+    assert (
+        load_index <
+        refresh_index
+    )

@@ -11,6 +11,10 @@ const adminOrdersState = {
     orders: [],
     currentOrder: null,
     updatingStatus: false,
+    autoRefreshEnabled: false,
+    autoRefreshTimer: null,
+    visibilityBound: false,
+    requestInFlight: false,
 };
 
 
@@ -1546,7 +1550,24 @@ function updatePagination(
 }
 
 
-async function loadOrders() {
+async function loadOrders(
+    options = {}
+) {
+    const silent =
+        options.silent === true;
+
+
+    if (
+        adminOrdersState.requestInFlight
+    ) {
+        return;
+    }
+
+
+    adminOrdersState.requestInFlight =
+        true;
+
+
     const loading =
         getOrdersElement(
             "admin-orders-loading"
@@ -1563,19 +1584,21 @@ async function loadOrders() {
         );
 
 
-    setOrdersMessage(
-        message,
-        ""
-    );
+    if (!silent) {
+        setOrdersMessage(
+            message,
+            ""
+        );
 
 
-    if (loading) {
-        loading.hidden = false;
-    }
+        if (loading) {
+            loading.hidden = false;
+        }
 
 
-    if (emptyState) {
-        emptyState.hidden = true;
+        if (emptyState) {
+            emptyState.hidden = true;
+        }
     }
 
 
@@ -1659,6 +1682,14 @@ async function loadOrders() {
             data?.pagination
         );
 
+
+        if (silent) {
+            setOrdersMessage(
+                message,
+                ""
+            );
+        }
+
     } catch (error) {
 
         if (
@@ -1670,22 +1701,36 @@ async function loadOrders() {
         }
 
 
-        setOrdersMessage(
-            message,
-            error instanceof Error
-                ? error.message
-                : "No fue posible cargar los pedidos."
-        );
+        /*
+         * Una actualización automática no debe borrar
+         * la información actualmente visible por un error
+         * temporal de red o del servidor.
+         */
+
+        if (!silent) {
+
+            setOrdersMessage(
+                message,
+                error instanceof Error
+                    ? error.message
+                    : "No fue posible cargar los pedidos."
+            );
 
 
-        if (loading) {
-            loading.hidden = true;
+            if (loading) {
+                loading.hidden = true;
+            }
+
+
+            updatePagination(
+                null
+            );
         }
 
+    } finally {
 
-        updatePagination(
-            null
-        );
+        adminOrdersState.requestInFlight =
+            false;
     }
 }
 
@@ -2045,13 +2090,88 @@ function openOrderFromQueryString() {
 }
 
 
+function refreshAdminOrdersData() {
+    if (
+        document.visibilityState !==
+        "visible"
+    ) {
+        return;
+    }
+
+
+    if (
+        adminOrdersState.updatingStatus
+    ) {
+        return;
+    }
+
+
+    void loadOrders(
+        {
+            silent: true,
+        }
+    );
+}
+
+
+function handleAdminOrdersVisibilityChange() {
+    if (
+        document.visibilityState ===
+        "visible"
+    ) {
+        refreshAdminOrdersData();
+    }
+}
+
+
+function setupAdminOrdersAutoRefresh() {
+    if (
+        adminOrdersState.autoRefreshEnabled
+    ) {
+        return;
+    }
+
+
+    adminOrdersState.autoRefreshEnabled =
+        true;
+
+
+    adminOrdersState.autoRefreshTimer =
+        window.setInterval(
+            refreshAdminOrdersData,
+            ADMIN_DATA_REFRESH_INTERVAL_MS
+        );
+
+
+    if (
+        adminOrdersState.visibilityBound
+    ) {
+        return;
+    }
+
+
+    adminOrdersState.visibilityBound =
+        true;
+
+
+    document.addEventListener(
+        "visibilitychange",
+        handleAdminOrdersVisibilityChange
+    );
+}
+
+
 function initializeAdminOrders() {
     setupFilters();
     setupPagination();
     setupOrderDetailModal();
     applyOrderFiltersFromQueryString();
-    loadOrders();
+
+    void loadOrders();
+
     openOrderFromQueryString();
+
+    setupAdminOrdersAutoRefresh();
 }
 
 
