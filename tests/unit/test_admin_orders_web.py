@@ -1241,3 +1241,159 @@ def test_admin_orders_initializes_auto_refresh(
         load_index <
         refresh_index
     )
+
+
+def test_admin_orders_page_includes_new_pending_orders_notice(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/orders"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        'id="admin-orders-new-pending-notice"'
+        in body
+    )
+
+    assert (
+        'id="admin-orders-new-pending-notice-message"'
+        in body
+    )
+
+    assert (
+        'id="admin-orders-new-pending-notice-dismiss"'
+        in body
+    )
+
+    assert (
+        'href="/admin/orders?status=pending"'
+        in body
+    )
+
+    assert (
+        "Ver pedidos pendientes"
+        in body
+    )
+
+
+def test_admin_orders_checks_pending_count_without_changing_polling_interval(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+    )
+
+    assert (
+        "async function checkForNewPendingOrders("
+        in normalized_body
+    )
+
+    assert (
+        "/api/admin/orders?page=1&per_page=1&status=pending"
+        in normalized_body
+    )
+
+    assert (
+        "observeAdminOrdersPendingCount("
+        in normalized_body
+    )
+
+    assert (
+        "pendingCountRequestInFlight"
+        in normalized_body
+    )
+
+    assert (
+        "void checkForNewPendingOrders();"
+        in normalized_body
+    )
+
+    assert (
+        "ADMIN_DATA_REFRESH_INTERVAL_MS"
+        in normalized_body
+    )
+
+
+def test_admin_orders_pending_notice_can_be_dismissed(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+    )
+
+    assert (
+        "function dismissAdminOrdersNewPendingNotice("
+        in normalized_body
+    )
+
+    assert (
+        "adminOrdersState.unseenNewPendingCount = 0;"
+        in normalized_body
+    )
+
+    assert (
+        "function setupAdminOrdersNewPendingNotice("
+        in normalized_body
+    )
+
+    assert (
+        'getOrdersElement(\n            "admin-orders-new-pending-notice-dismiss"'
+        in normalized_body
+    )

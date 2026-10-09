@@ -1048,3 +1048,161 @@ def test_admin_dashboard_starts_auto_refresh_after_initial_load(
         initial_load_index <
         auto_refresh_index
     )
+
+
+def test_admin_dashboard_includes_new_pending_orders_notice(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/admin/dashboard"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    assert (
+        'id="admin-dashboard-new-pending-notice"'
+        in body
+    )
+
+    assert (
+        'id="admin-dashboard-new-pending-notice-message"'
+        in body
+    )
+
+    assert (
+        'id="admin-dashboard-new-pending-notice-dismiss"'
+        in body
+    )
+
+    assert (
+        'href="/admin/orders?status=pending"'
+        in body
+    )
+
+    assert (
+        "Ver pedidos pendientes"
+        in body
+    )
+
+
+def test_admin_dashboard_detects_increases_in_pending_orders(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized_body = (
+        body
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+    )
+
+    assert (
+        "function observeDashboardPendingCount("
+        in normalized_body
+    )
+
+    assert (
+        "adminDashboardLastPendingCount === null"
+        in normalized_body
+    )
+
+    assert (
+        "adminDashboardUnseenNewPendingCount +=\n            increase"
+        in normalized_body
+    )
+
+    assert (
+        "function dismissDashboardNewPendingNotice("
+        in normalized_body
+    )
+
+    assert (
+        "setupDashboardNewPendingNotice();"
+        in normalized_body
+    )
+
+
+def test_admin_css_preserves_hidden_attribute(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/css/admin.css"
+    )
+
+    assert response.status_code == 200
+
+    css = response.get_data(
+        as_text=True
+    )
+
+    normalized_css = " ".join(
+        css.split()
+    )
+
+    assert (
+        "[hidden] { display: none !important; }"
+        in normalized_css
+    )

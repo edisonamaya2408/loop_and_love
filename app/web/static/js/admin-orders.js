@@ -15,6 +15,10 @@ const adminOrdersState = {
     autoRefreshTimer: null,
     visibilityBound: false,
     requestInFlight: false,
+    lastKnownPendingCount: null,
+    unseenNewPendingCount: 0,
+    pendingCountRequestInFlight: false,
+    pendingNoticeDismissBound: false,
 };
 
 
@@ -2090,6 +2094,168 @@ function openOrderFromQueryString() {
 }
 
 
+function renderAdminOrdersNewPendingNotice() {
+    const notice =
+        getOrdersElement(
+            "admin-orders-new-pending-notice"
+        );
+
+    const message =
+        getOrdersElement(
+            "admin-orders-new-pending-notice-message"
+        );
+
+    if (!notice || !message) {
+        return;
+    }
+
+    const count =
+        adminOrdersState.unseenNewPendingCount;
+
+    if (count <= 0) {
+        notice.hidden = true;
+        message.textContent = "";
+        return;
+    }
+
+    message.textContent =
+        count === 1
+            ? "Llegó 1 nuevo pedido pendiente desde la última actualización."
+            : `Llegaron ${count} nuevos pedidos pendientes desde la última actualización.`;
+
+    notice.hidden = false;
+}
+
+
+function observeAdminOrdersPendingCount(
+    totalValue
+) {
+    const currentCount =
+        Number(totalValue);
+
+    if (
+        !Number.isSafeInteger(currentCount) ||
+        currentCount < 0
+    ) {
+        return;
+    }
+
+    /*
+     * En la primera consulta solo establecemos
+     * la referencia, sin alertar por pedidos antiguos.
+     */
+    if (
+        adminOrdersState.lastKnownPendingCount === null
+    ) {
+        adminOrdersState.lastKnownPendingCount =
+            currentCount;
+
+        return;
+    }
+
+    const increase =
+        currentCount -
+        adminOrdersState.lastKnownPendingCount;
+
+    adminOrdersState.lastKnownPendingCount =
+        currentCount;
+
+    if (increase > 0) {
+        adminOrdersState.unseenNewPendingCount +=
+            increase;
+
+        renderAdminOrdersNewPendingNotice();
+    }
+}
+
+
+async function checkForNewPendingOrders() {
+    if (
+        document.visibilityState !== "visible" ||
+        adminOrdersState.pendingCountRequestInFlight ||
+        adminOrdersState.updatingStatus
+    ) {
+        return;
+    }
+
+    adminOrdersState.pendingCountRequestInFlight =
+        true;
+
+    try {
+        const response =
+            await adminFetch(
+                "/api/admin/orders?page=1&per_page=1&status=pending"
+            );
+
+        const data =
+            await parseJsonSafely(
+                response
+            );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const totalPending =
+            data?.pagination?.total;
+
+        if (
+            totalPending === undefined ||
+            totalPending === null
+        ) {
+            return;
+        }
+
+        observeAdminOrdersPendingCount(
+            totalPending
+        );
+
+    } catch (error) {
+        /*
+         * La comprobación es auxiliar.
+         * Un fallo temporal no debe borrar la tabla
+         * ni interrumpir el trabajo del administrador.
+         */
+    } finally {
+        adminOrdersState.pendingCountRequestInFlight =
+            false;
+    }
+}
+
+
+function dismissAdminOrdersNewPendingNotice() {
+    adminOrdersState.unseenNewPendingCount = 0;
+
+    renderAdminOrdersNewPendingNotice();
+}
+
+
+function setupAdminOrdersNewPendingNotice() {
+    if (
+        adminOrdersState.pendingNoticeDismissBound
+    ) {
+        return;
+    }
+
+    const dismissButton =
+        getOrdersElement(
+            "admin-orders-new-pending-notice-dismiss"
+        );
+
+    if (!dismissButton) {
+        return;
+    }
+
+    dismissButton.addEventListener(
+        "click",
+        dismissAdminOrdersNewPendingNotice
+    );
+
+    adminOrdersState.pendingNoticeDismissBound =
+        true;
+}
+
+
 function refreshAdminOrdersData() {
     if (
         document.visibilityState !==
@@ -2111,6 +2277,8 @@ function refreshAdminOrdersData() {
             silent: true,
         }
     );
+
+    void checkForNewPendingOrders();
 }
 
 
@@ -2134,6 +2302,11 @@ function setupAdminOrdersAutoRefresh() {
 
     adminOrdersState.autoRefreshEnabled =
         true;
+
+        
+    setupAdminOrdersNewPendingNotice();
+
+    void checkForNewPendingOrders();
 
 
     adminOrdersState.autoRefreshTimer =

@@ -1857,3 +1857,142 @@
     text-decoration:
         underline;
 }
+
+
+/* ==================================================
+   NEW PENDING ORDERS NOTICE
+================================================== */
+
+.admin-new-pending-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    margin-bottom: 1rem;
+    padding: 1rem 1.15rem;
+
+    border: 1px solid #E7C98E;
+    border-left: 4px solid #B88A3B;
+    border-radius: 14px;
+
+    background: #FFF8E9;
+    box-shadow: var(--admin-shadow-sm);
+}
+
+
+.admin-new-pending-notice[hidden] {
+    display: none;
+}
+
+
+.admin-new-pending-notice__content {
+    min-width: 0;
+}
+
+
+.admin-new-pending-notice__eyebrow {
+    display: block;
+    margin-bottom: 0.3rem;
+
+    color: #876321;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+
+.admin-new-pending-notice__content p {
+    margin: 0;
+
+    color: var(--admin-brown);
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+
+.admin-new-pending-notice__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+
+
+.admin-new-pending-notice__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+
+    border: 1px solid #D8BD83;
+    border-radius: 9px;
+
+    background: #FFFFFF;
+    color: #76551D;
+
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+}
+
+
+.admin-new-pending-notice__link:hover {
+    background: #FFF0CE;
+}
+
+
+.admin-new-pending-notice__dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 36px;
+    height: 36px;
+    padding: 0;
+
+    border: 1px solid #E7D8B5;
+    border-radius: 9px;
+
+    background: transparent;
+    color: #76551D;
+
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+
+.admin-new-pending-notice__dismiss:hover {
+    background: #F7E9CA;
+}
+
+
+@media (max-width: 640px) {
+    .admin-new-pending-notice {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-new-pending-notice__actions {
+        justify-content: space-between;
+    }
+
+    .admin-new-pending-notice__link {
+        flex: 1;
+    }
+}
+
+
+/* ==================================================
+   PRESERVE THE HTML HIDDEN ATTRIBUTE
+================================================== */
+
+[hidden] {
+    display: none !important;
+}

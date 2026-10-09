@@ -30,6 +30,31 @@ Loop & Love | Dashboard
 </section>
 
 
+<section id="admin-dashboard-new-pending-notice" class="admin-new-pending-notice" role="status" aria-live="polite"
+    hidden>
+    <div class="admin-new-pending-notice__content">
+        <span class="admin-new-pending-notice__eyebrow">
+            NUEVOS PEDIDOS
+        </span>
+
+        <p id="admin-dashboard-new-pending-notice-message">
+            Hay nuevos pedidos pendientes.
+        </p>
+    </div>
+
+    <div class="admin-new-pending-notice__actions">
+        <a href="{{ url_for('web.admin_orders_page') }}?status=pending" class="admin-new-pending-notice__link">
+            Ver pedidos pendientes
+        </a>
+
+        <button type="button" id="admin-dashboard-new-pending-notice-dismiss" class="admin-new-pending-notice__dismiss"
+            aria-label="Descartar notificación de nuevos pedidos">
+            ×
+        </button>
+    </div>
+</section>
+
+
 <section class="admin-kpi-grid" aria-label="Resumen del sistema">
 
 

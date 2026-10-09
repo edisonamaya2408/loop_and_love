@@ -16,6 +16,13 @@ let adminDashboardVisibilityBound =
     false;
 
 
+let adminDashboardLastPendingCount = null;
+
+let adminDashboardUnseenNewPendingCount = 0;
+
+let adminDashboardPendingNoticeDismissBound = false;
+
+
 function getAdminToken() {
     return sessionStorage.getItem(
         ADMIN_TOKEN_KEY
@@ -708,23 +715,31 @@ async function loadDashboardSummary() {
 
 
     try {
-
         const data =
             await readResponse(
                 results[3]
             );
 
+        const totalPending =
+            data?.pagination?.total;
 
         if (pendingOrderCount) {
             pendingOrderCount.textContent =
                 String(
-                    data?.pagination?.total
-                    ?? 0
+                    totalPending ?? 0
                 );
         }
 
-    } catch (error) {
+        if (
+            totalPending !== undefined &&
+            totalPending !== null
+        ) {
+            observeDashboardPendingCount(
+                totalPending
+            );
+        }
 
+    } catch (error) {
         if (pendingOrderCount) {
             pendingOrderCount.textContent =
                 "—";
@@ -1006,6 +1021,114 @@ function formatDashboardOrderDate(
 }
 
 
+function renderDashboardNewPendingNotice() {
+    const notice =
+        document.getElementById(
+            "admin-dashboard-new-pending-notice"
+        );
+
+    const message =
+        document.getElementById(
+            "admin-dashboard-new-pending-notice-message"
+        );
+
+    if (!notice || !message) {
+        return;
+    }
+
+    const count =
+        adminDashboardUnseenNewPendingCount;
+
+    if (count <= 0) {
+        notice.hidden = true;
+        message.textContent = "";
+        return;
+    }
+
+    message.textContent =
+        count === 1
+            ? "Llegó 1 nuevo pedido pendiente desde la última actualización."
+            : `Llegaron ${count} nuevos pedidos pendientes desde la última actualización.`;
+
+    notice.hidden = false;
+}
+
+
+function observeDashboardPendingCount(
+    totalValue
+) {
+    const currentCount =
+        Number(totalValue);
+
+    if (
+        !Number.isSafeInteger(currentCount) ||
+        currentCount < 0
+    ) {
+        return;
+    }
+
+    /*
+     * La primera respuesta establece la referencia.
+     * No notificamos por pedidos que ya existían.
+     */
+    if (
+        adminDashboardLastPendingCount === null
+    ) {
+        adminDashboardLastPendingCount =
+            currentCount;
+
+        return;
+    }
+
+    const increase =
+        currentCount -
+        adminDashboardLastPendingCount;
+
+    adminDashboardLastPendingCount =
+        currentCount;
+
+    if (increase > 0) {
+        adminDashboardUnseenNewPendingCount +=
+            increase;
+
+        renderDashboardNewPendingNotice();
+    }
+}
+
+
+function dismissDashboardNewPendingNotice() {
+    adminDashboardUnseenNewPendingCount = 0;
+
+    renderDashboardNewPendingNotice();
+}
+
+
+function setupDashboardNewPendingNotice() {
+    if (
+        adminDashboardPendingNoticeDismissBound
+    ) {
+        return;
+    }
+
+    const dismissButton =
+        document.getElementById(
+            "admin-dashboard-new-pending-notice-dismiss"
+        );
+
+    if (!dismissButton) {
+        return;
+    }
+
+    dismissButton.addEventListener(
+        "click",
+        dismissDashboardNewPendingNotice
+    );
+
+    adminDashboardPendingNoticeDismissBound =
+        true;
+}
+
+
 function refreshDashboardData() {
     if (
         document.visibilityState !==
@@ -1076,6 +1199,8 @@ function setupAdminDashboard() {
         redirectToLogin();
         return;
     }
+
+    setupDashboardNewPendingNotice();
 
     void loadDashboardSummary();
 
