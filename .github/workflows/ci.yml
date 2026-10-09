@@ -101,6 +101,7 @@ jobs:
               if existing is None:
                   db.session.add(
                       AdminUser(
+                          name="Administrador CI",
                           email="admin@loopandlove.com",
                           password_hash=PasswordService.hash_password(
                               "Password123!"
