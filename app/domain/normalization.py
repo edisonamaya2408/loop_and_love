@@ -112,3 +112,23 @@ def normalize_slug(value: str) -> str:
     )
 
     return value.strip().lower()
+
+
+def normalize_admin_display_name(
+    value: str,
+) -> str:
+    """Normaliza el nombre visible de un administrador."""
+
+    if not isinstance(value, str):
+        raise ValueError(
+            "El nombre del administrador debe ser texto."
+        )
+
+    value = unicodedata.normalize(
+        "NFKC",
+        value,
+    )
+
+    return " ".join(
+        value.strip().split()
+    )

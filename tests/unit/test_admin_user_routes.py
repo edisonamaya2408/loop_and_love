@@ -5,6 +5,9 @@ from app.domain.entities.admin_user import (
 from app.infrastructure.security.jwt_service import (
     JWTService,
 )
+from tests.unit.audit_test_helpers import (
+    InMemoryAdminAuditRepository,
+)
 
 
 class FakeAdminUserRepository:
@@ -95,6 +98,9 @@ class FakeAdminUserRepository:
         if existing is None:
             return None
 
+        existing.name = (
+            admin_user.name
+        )
         existing.email = (
             admin_user.email
         )
@@ -136,6 +142,10 @@ def _create_test_app(
     app = create_app(
         "development"
     )
+
+    app.extensions[
+        "admin_audit_repository"
+    ] = InMemoryAdminAuditRepository()
 
     repository = (
         FakeAdminUserRepository(
@@ -229,6 +239,10 @@ def test_admin_users_lists_without_exposing_security_fields():
     ][0]
 
     assert returned_user[
+        "name"
+    ] == "Administrador"
+
+    assert returned_user[
         "email"
     ] == "admin@test.com"
 
@@ -253,6 +267,7 @@ def test_create_admin_user():
     response = client.post(
         "/api/admin/users",
         json={
+            "name": "Segundo administrador",
             "email": "  SECOND@Test.COM ",
             "password": "Password123!",
             "password_confirmation": "Password123!",
@@ -268,6 +283,7 @@ def test_create_admin_user():
     data = response.get_json()
 
     assert data["success"] is True
+    assert data["data"]["name"] == "Segundo administrador"
     assert data["data"]["email"] == (
         "second@test.com"
     )
@@ -300,6 +316,7 @@ def test_create_admin_user_rejects_duplicate_email():
     response = client.post(
         "/api/admin/users",
         json={
+            "name": "Segundo administrador",
             "email": " SECOND@test.com ",
             "password": "Password123!",
             "password_confirmation": "Password123!",

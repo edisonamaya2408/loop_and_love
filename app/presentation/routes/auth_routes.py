@@ -129,3 +129,22 @@ def logout():
             ),
         }
     ), 200
+
+
+@auth_bp.get("/me")
+@jwt_required
+def current_admin_identity():
+    """Devuelve la identidad del administrador autenticado."""
+
+    user = g.authenticated_user
+
+    return jsonify(
+        {
+            "success": True,
+            "data": {
+                "id": user["id"],
+                "name": user["name"],
+                "email": user["email"],
+            },
+        }
+    ), 200

@@ -8,6 +8,7 @@ from app.domain.exceptions import (
     DuplicateAdminUserEmailError,
 )
 from app.domain.normalization import (
+    normalize_admin_display_name,
     normalize_email,
 )
 from app.domain.repositories.admin_user_repository import (
@@ -26,9 +27,11 @@ class AdminUserService:
     )
 
     MIN_PASSWORD_LENGTH = 8
+    MAX_NAME_LENGTH = 120
     MAX_EMAIL_LENGTH = 255
 
     _ALLOWED_UPDATE_FIELDS = {
+        "name",
         "email",
         "password",
         "password_confirmation",
@@ -64,6 +67,7 @@ class AdminUserService:
 
     def create_user(
         self,
+        name: str,
         email: str,
         password: str,
         password_confirmation: str,
@@ -74,6 +78,10 @@ class AdminUserService:
             self._validate_email(
                 email
             )
+        )
+
+        normalized_name = self._validate_name(
+            name
         )
 
         self._validate_password(
@@ -94,6 +102,7 @@ class AdminUserService:
 
         admin_user = AdminUserEntity(
             id=None,
+            name=normalized_name,
             email=normalized_email,
             password_hash=(
                 PasswordService.hash_password(
@@ -163,6 +172,19 @@ class AdminUserService:
             )
 
         has_effective_change = False
+
+        if "name" in changes:
+            normalized_name = (
+                self._validate_name(
+                    changes["name"]
+                )
+            )
+
+            if normalized_name != user.name:
+                user.name = normalized_name
+                has_effective_change = True
+
+        #has_effective_change = False
 
         if "email" in changes:
             normalized_email = (
@@ -276,6 +298,41 @@ class AdminUserService:
             )
 
         return updated_user
+
+    @staticmethod
+    def _validate_name(
+        name: str,
+    ) -> str:
+        if name is None:
+            raise ValueError(
+                "El nombre del administrador es obligatorio."
+            )
+
+        if not isinstance(name, str):
+            raise ValueError(
+                "El nombre del administrador debe ser texto."
+            )
+
+        normalized_name = (
+            normalize_admin_display_name(
+                name
+            )
+        )
+
+        if not normalized_name:
+            raise ValueError(
+                "El nombre del administrador es obligatorio."
+            )
+
+        if len(normalized_name) > (
+            AdminUserService.MAX_NAME_LENGTH
+        ):
+            raise ValueError(
+                "El nombre del administrador no puede superar "
+                f"{AdminUserService.MAX_NAME_LENGTH} caracteres."
+            )
+
+        return normalized_name
 
     @staticmethod
     def _validate_email(

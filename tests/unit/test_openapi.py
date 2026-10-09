@@ -17,6 +17,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/health/storage"),
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/logout"),
+    ("GET", "/api/auth/me"),
     ("GET", "/api/products"),
     ("GET", "/api/products/<int:product_id>"),
     ("GET", "/api/categories"),
@@ -62,6 +63,7 @@ EXPECTED_OPERATIONS = {
         "PATCH",
         "/api/admin/orders/<int:order_id>/status",
     ),
+    ("GET", "/api/admin/audit-logs"),
 }
 
 
@@ -71,6 +73,7 @@ EXPECTED_OPENAPI_PATHS = {
     "/health/storage",
     "/api/auth/login",
     "/api/auth/logout",
+    "/api/auth/me",
     "/api/products",
     "/api/products/{product_id}",
     "/api/categories",
@@ -87,6 +90,7 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/admin/orders",
     "/api/admin/orders/{order_id}",
     "/api/admin/orders/{order_id}/status",
+    "/api/admin/audit-logs",
 }
 
 
@@ -255,6 +259,7 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/health/db",
         "/health/storage",
         "/api/auth/logout",
+        "/api/auth/me",
         "/api/admin/products",
         "/api/admin/products/{product_id}",
         "/api/admin/products/{product_id}/image",
@@ -266,6 +271,7 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/api/admin/orders",
         "/api/admin/orders/{order_id}",
         "/api/admin/orders/{order_id}/status",
+        "/api/admin/audit-logs",
     }
 
     for path in protected_paths:

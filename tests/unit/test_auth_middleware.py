@@ -422,6 +422,7 @@ def test_jwt_required_rejects_existing_token_when_admin_no_longer_exists():
 def test_jwt_required_uses_database_user_email():
     active_admin = AdminUserEntity(
         id=1,
+        name="María Gómez",
         email="database@loopandlove.com",
         password_hash="test-hash",
         is_active=True,
@@ -455,6 +456,7 @@ def test_jwt_required_uses_database_user_email():
 
     assert data["data"]["user"] == {
         "id": 1,
+        "name": "María Gómez",
         "email": "database@loopandlove.com",
     }
 
@@ -548,3 +550,42 @@ def test_jwt_required_rejects_revoked_token_version():
         data["error"]["code"]
         == "INVALID_OR_EXPIRED_TOKEN"
     )
+
+
+def test_current_admin_identity_returns_database_identity():
+    active_admin = AdminUserEntity(
+        id=1,
+        name="María Gómez",
+        email="maria@loopandlove.com",
+        password_hash="test-hash",
+        is_active=True,
+        token_version=0,
+    )
+
+    app = _create_protected_app(
+        admin_user=active_admin
+    )
+
+    token = JWTService.create_access_token(
+        user_id=1,
+        email="maria@loopandlove.com",
+        token_version=0,
+    )
+
+    response = app.test_client().get(
+        "/api/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}"
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert response.get_json() == {
+        "success": True,
+        "data": {
+            "id": 1,
+            "name": "María Gómez",
+            "email": "maria@loopandlove.com",
+        },
+    }

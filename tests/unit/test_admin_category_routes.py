@@ -2,6 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.unit.audit_test_helpers import (
+    InMemoryAdminAuditRepository,
+)
+
 from app import create_app
 
 
@@ -94,6 +98,7 @@ class FakeAdminUserRepository:
     def __init__(self):
         self.admin_user = SimpleNamespace(
             id=1,
+            name="Administrador de prueba",
             email="admin@test.com",
             is_active=True,
             token_version=0,
@@ -139,6 +144,10 @@ def _create_test_app(monkeypatch):
     app = create_app(
         "development"
     )
+
+    app.extensions[
+        "admin_audit_repository"
+    ] = InMemoryAdminAuditRepository()
 
     category_service = FakeCategoryService()
 

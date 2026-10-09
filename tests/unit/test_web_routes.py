@@ -291,6 +291,7 @@ def test_admin_setup_creates_first_admin(
         "/admin/setup",
         data={
             "setup_token": "A" * 40,
+            "name": "Administradora Inicial",
             "email": "Admin@Example.COM",
             "password": "Password123!",
             "password_confirmation": (
@@ -313,6 +314,7 @@ def test_admin_setup_creates_first_admin(
     )
 
     assert created is not None
+    assert created.name == "Administradora Inicial"
     assert created.email == "admin@example.com"
     assert created.is_active is True
     assert created.token_version == 0

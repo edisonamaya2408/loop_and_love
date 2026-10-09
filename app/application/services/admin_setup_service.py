@@ -10,6 +10,7 @@ from app.domain.exceptions import (
     InvalidAdminSetupTokenError,
 )
 from app.domain.normalization import (
+    normalize_admin_display_name,
     normalize_email,
 )
 from app.domain.repositories.admin_user_repository import (
@@ -34,6 +35,7 @@ class AdminSetupService:
 
     MIN_SETUP_TOKEN_LENGTH = 32
     MIN_PASSWORD_LENGTH = 8
+    MAX_NAME_LENGTH = 120
 
     def __init__(
         self,
@@ -85,9 +87,52 @@ class AdminSetupService:
         ):
             raise InvalidAdminSetupTokenError()
 
+    @staticmethod
+    def _validate_name(
+        name: str,
+    ) -> str:
+        """
+        Valida y normaliza el nombre del administrador.
+        """
+
+        if name is None:
+            raise ValueError(
+                "El nombre del administrador es obligatorio."
+            )
+
+        if not isinstance(
+            name,
+            str,
+        ):
+            raise ValueError(
+                "El nombre del administrador debe ser texto."
+            )
+
+        normalized_name = (
+            normalize_admin_display_name(
+                name
+            )
+        )
+
+        if not normalized_name:
+            raise ValueError(
+                "El nombre del administrador es obligatorio."
+            )
+
+        if len(normalized_name) > (
+            AdminSetupService.MAX_NAME_LENGTH
+        ):
+            raise ValueError(
+                "El nombre del administrador no puede superar "
+                f"{AdminSetupService.MAX_NAME_LENGTH} caracteres."
+            )
+
+        return normalized_name
+
     def create_initial_admin(
         self,
         setup_token: str,
+        name: str,
         email: str,
         password: str,
         password_confirmation: str,
@@ -109,6 +154,10 @@ class AdminSetupService:
 
         normalized_email = normalize_email(
             email
+        )
+
+        normalized_name = self._validate_name(
+            name
         )
 
         if not normalized_email:
@@ -159,6 +208,7 @@ class AdminSetupService:
 
         admin_user = AdminUserEntity(
             id=None,
+            name=normalized_name,
             email=normalized_email,
             password_hash=(
                 PasswordService.hash_password(

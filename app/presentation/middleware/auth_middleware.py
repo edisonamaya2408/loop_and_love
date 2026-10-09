@@ -186,6 +186,7 @@ def jwt_required(view_function):
 
         g.authenticated_user = {
             "id": admin_user.id,
+            "name": admin_user.name,
             "email": admin_user.email,
         }
 

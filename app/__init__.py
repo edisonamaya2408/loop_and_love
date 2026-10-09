@@ -37,6 +37,9 @@ from app.presentation.middleware.error_handler import (
 from app.presentation.middleware.request_logging import (
     register_request_logging,
 )
+from app.presentation.middleware.admin_audit_middleware import (
+    register_admin_audit,
+)
 from app.presentation.routes.admin_category_routes import (
     admin_categories_bp,
 )
@@ -54,6 +57,9 @@ from app.presentation.routes.admin_user_routes import (
 )
 from app.presentation.routes.auth_routes import (
     auth_bp,
+)
+from app.presentation.routes.admin_audit_routes import (
+    admin_audit_bp,
 )
 from app.presentation.routes.category_routes import (
     categories_bp,
@@ -218,7 +224,15 @@ def create_app(environment=None):
         admin_categories_bp
     )
 
+    app.register_blueprint(
+        admin_audit_bp
+    )
+
     register_request_logging(
+        app
+    )
+
+    register_admin_audit(
         app
     )
 
@@ -347,6 +361,16 @@ def create_app(environment=None):
             AdminUserEntity,
         )
 
+        name = input(
+            "Nombre completo del administrador: "
+        ).strip()
+
+        if not name:
+            print(
+                "El nombre del administrador es obligatorio."
+            )
+            return
+
         email = input(
             "Correo del administrador: "
         ).strip().lower()
@@ -399,6 +423,7 @@ def create_app(environment=None):
 
         admin_user = AdminUserEntity(
             id=None,
+            name=name,
             email=email,
             password_hash=(
                 PasswordService.hash_password(

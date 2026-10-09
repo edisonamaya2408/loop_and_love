@@ -125,6 +125,7 @@ def admin_setup():
             setup_token_configured
         ),
         error_message=None,
+        form_name="",
         form_email="",
     )
 
@@ -142,6 +143,13 @@ def admin_setup_submit():
     """
 
     service = _get_admin_setup_service()
+
+    form_name = (
+        request.form.get(
+            "name",
+            "",
+        ).strip()
+    )
 
     form_email = (
         request.form.get(
@@ -171,6 +179,7 @@ def admin_setup_submit():
     try:
         service.create_initial_admin(
             setup_token=setup_token,
+            name=form_name,
             email=form_email,
             password=password,
             password_confirmation=(
@@ -190,6 +199,7 @@ def admin_setup_submit():
             "admin/setup.html",
             setup_token_configured=False,
             error_message=str(error),
+            form_name=form_name,
             form_email=form_email,
         ), 503
 
@@ -198,6 +208,7 @@ def admin_setup_submit():
             "admin/setup.html",
             setup_token_configured=True,
             error_message=str(error),
+            form_name=form_name,
             form_email=form_email,
         ), 401
 
@@ -206,6 +217,7 @@ def admin_setup_submit():
             "admin/setup.html",
             setup_token_configured=True,
             error_message=str(error),
+            form_name=form_name,
             form_email=form_email,
         ), 400
 
@@ -352,4 +364,18 @@ def admin_orders_page():
 
     return render_template(
         "admin/orders.html"
+    )
+
+
+@web_bp.get("/admin/audit-logs")
+def admin_audit_logs_page():
+    """Página de consulta de auditoría administrativa."""
+
+    if _setup_required():
+        return redirect(
+            url_for("web.admin_setup")
+        )
+
+    return render_template(
+        "admin/audit_logs.html"
     )

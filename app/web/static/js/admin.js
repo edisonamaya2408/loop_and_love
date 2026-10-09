@@ -131,6 +131,77 @@ async function adminFetch(
 }
 
 
+async function loadAuthenticatedAdminIdentity() {
+    const nameElement =
+        document.getElementById(
+            "admin-user-email"
+        );
+
+    const avatarElement =
+        document.getElementById(
+            "admin-user-avatar"
+        );
+
+    if (
+        !nameElement ||
+        !getAdminToken()
+    ) {
+        return;
+    }
+
+    try {
+        const response =
+            await adminFetch(
+                "/api/auth/me",
+                {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                }
+            );
+
+        const data =
+            await parseJsonSafely(
+                response
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                getErrorMessage(data)
+            );
+        }
+
+        const identity =
+            data?.data;
+
+        const displayName =
+            typeof identity?.name === "string" &&
+                identity.name.trim()
+                ? identity.name.trim()
+                : "Administrador";
+
+        nameElement.textContent =
+            displayName;
+
+        nameElement.title =
+            identity?.email || "";
+
+        if (avatarElement) {
+            avatarElement.textContent =
+                Array.from(displayName)[0]
+                    ?.toLocaleUpperCase("es-CO")
+                || "A";
+        }
+
+    } catch (error) {
+        /*
+         * adminFetch gestiona la expiración de sesión.
+         * Ante otros errores conservamos el texto de respaldo.
+         */
+    }
+}
+
+
 function setLoginMessage(
     element,
     message
@@ -1227,6 +1298,8 @@ document.addEventListener(
                 "admin-shell"
             )
         ) {
+            void loadAuthenticatedAdminIdentity();
+
             setupLogoutButtons();
             setupMobileMenu();
         }

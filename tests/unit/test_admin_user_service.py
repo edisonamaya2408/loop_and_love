@@ -100,6 +100,10 @@ class FakeAdminUserRepository:
         if existing is None:
             return None
 
+        existing.name = (
+            admin_user.name
+        )
+
         existing.email = (
             admin_user.email
         )
@@ -163,6 +167,7 @@ def test_create_user_normalizes_email_and_hashes_password(
 
     created = (
         service.create_user(
+            name="Administrador de prueba",
             email="  ADMIN@Test.COM ",
             password="Password123!",
             password_confirmation="Password123!",
@@ -170,6 +175,7 @@ def test_create_user_normalizes_email_and_hashes_password(
     )
 
     assert created.id == 1
+    assert created.name == "Administrador de prueba"
     assert created.email == (
         "admin@test.com"
     )
@@ -202,6 +208,7 @@ def test_create_user_rejects_duplicate_email():
         DuplicateAdminUserEmailError
     ):
         service.create_user(
+            name="Administrador de prueba",
             email="ADMIN@test.com",
             password="Password123!",
             password_confirmation="Password123!",
@@ -222,6 +229,7 @@ def test_create_user_rejects_short_password():
         match="al menos 8",
     ):
         service.create_user(
+            name="Administrador de prueba",
             email="admin@test.com",
             password="123",
             password_confirmation="123",
@@ -445,3 +453,40 @@ def test_update_user_rejects_without_effective_changes():
                 "is_active": True,
             },
         )
+
+
+def test_create_user_rejects_empty_name():
+    service = _service(FakeAdminUserRepository())
+
+    with pytest.raises(
+        ValueError,
+        match="nombre del administrador es obligatorio",
+    ):
+        service.create_user(
+            name="   ",
+            email="admin@test.com",
+            password="Password123!",
+            password_confirmation="Password123!",
+        )
+
+
+def test_update_user_changes_name_and_invalidates_tokens():
+    user = AdminUserEntity(
+        id=1,
+        name="Nombre anterior",
+        email="admin@test.com",
+        password_hash="hash",
+        is_active=True,
+        token_version=0,
+    )
+
+    repository = FakeAdminUserRepository(users=[user])
+    service = _service(repository)
+
+    updated = service.update_user(
+        user_id=1,
+        changes={"name": "  María   Pérez  "},
+    )
+
+    assert updated.name == "María Pérez"
+    assert updated.token_version == 1

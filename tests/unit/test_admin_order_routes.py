@@ -2,6 +2,10 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
+from tests.unit.audit_test_helpers import (
+    InMemoryAdminAuditRepository,
+)
+
 from app import create_app
 
 
@@ -252,6 +256,7 @@ class FakeOrderService:
 def _admin():
     return SimpleNamespace(
         id=1,
+        name="Administrador de prueba",
         email="admin@test.com",
         is_active=True,
         token_version=0,
@@ -298,6 +303,10 @@ def _create_test_app(
     app = create_app(
         "development"
     )
+
+    app.extensions[
+        "admin_audit_repository"
+    ] = InMemoryAdminAuditRepository()
 
     order_service = (
         FakeOrderService()

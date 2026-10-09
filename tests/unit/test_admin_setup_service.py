@@ -139,6 +139,7 @@ def test_create_initial_admin_successfully():
     )
 
     created = service.create_initial_admin(
+        name="Administrador de prueba",
         setup_token="A" * 40,
         email="Admin@Example.COM",
         password="Password123!",
@@ -146,6 +147,7 @@ def test_create_initial_admin_successfully():
     )
 
     assert created.id == 1
+    assert created.name == "Administrador de prueba"
     assert created.email == "admin@example.com"
     assert created.is_active is True
     assert created.token_version == 0
@@ -166,6 +168,7 @@ def test_create_initial_admin_rejects_invalid_setup_token():
         InvalidAdminSetupTokenError
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="incorrect-token",
             email="admin@test.com",
             password="Password123!",
@@ -189,6 +192,7 @@ def test_create_initial_admin_requires_valid_setup_configuration():
         AdminSetupUnavailableError
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="short",
             email="admin@test.com",
             password="Password123!",
@@ -220,6 +224,7 @@ def test_create_initial_admin_rejects_when_setup_already_completed():
         AdminSetupNotRequiredError
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="A" * 40,
             email="new@test.com",
             password="Password123!",
@@ -243,6 +248,7 @@ def test_create_initial_admin_rejects_invalid_email():
         match="correo electrónico no es válido",
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="A" * 40,
             email="correo-invalido",
             password="Password123!",
@@ -266,6 +272,7 @@ def test_create_initial_admin_rejects_short_password():
         match="al menos 8 caracteres",
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="A" * 40,
             email="admin@test.com",
             password="123",
@@ -289,10 +296,30 @@ def test_create_initial_admin_rejects_password_mismatch():
         match="contraseñas no coinciden",
     ):
         service.create_initial_admin(
+            name="Administrador de prueba",
             setup_token="A" * 40,
             email="admin@test.com",
             password="Password123!",
             password_confirmation="Different123!",
+        )
+
+    assert repository.count() == 0
+
+
+def test_create_initial_admin_rejects_empty_name():
+    repository = FakeAdminUserRepository()
+    service = _service(repository)
+
+    with pytest.raises(
+        ValueError,
+        match="nombre del administrador es obligatorio",
+    ):
+        service.create_initial_admin(
+            setup_token="A" * 40,
+            name="   ",
+            email="admin@test.com",
+            password="Password123!",
+            password_confirmation="Password123!",
         )
 
     assert repository.count() == 0

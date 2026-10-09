@@ -72,6 +72,17 @@ Loop & Love | Usuarios
 
             <div class="admin-users-field">
 
+                <label for="new-user-name">
+                    Nombre completo
+                </label>
+
+                <input type="text" id="new-user-name" name="name" autocomplete="name" maxlength="120"
+                    placeholder="Nombre del administrador" required>
+
+            </div>
+
+            <div class="admin-users-field">
+
                 <label for="new-user-email">
                     Correo electrónico
                 </label>
@@ -245,6 +256,16 @@ Loop & Love | Usuarios
         <form id="admin-user-edit-form" class="admin-users-form" novalidate>
 
             <input type="hidden" id="edit-user-id">
+
+            <div class="admin-users-field">
+
+                <label for="edit-user-name">
+                    Nombre completo
+                </label>
+
+                <input type="text" id="edit-user-name" autocomplete="name" maxlength="120" required>
+
+            </div>
 
 
             <div class="admin-users-field">

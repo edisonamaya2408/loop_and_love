@@ -1,0 +1,133 @@
+{% extends "admin/base.html" %}
+
+{% block title %}
+Loop & Love | Auditoría
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-audit.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page-header">
+    <div>
+        <span class="eyebrow">ADMINISTRACIÓN</span>
+        <h1>Auditoría</h1>
+        <p>Consulta quién realizó cada operación administrativa, sobre qué registro y cuándo ocurrió.</p>
+    </div>
+</section>
+
+<section class="admin-panel admin-audit-panel">
+    <div class="admin-panel__header admin-audit-panel__header">
+        <div>
+            <span class="eyebrow">TRAZABILIDAD</span>
+            <h2>Registro de actividad</h2>
+            <p class="admin-panel__description">Los eventos son de solo lectura y se presentan del más reciente al más
+                antiguo.</p>
+        </div>
+        <span class="admin-audit-count" id="admin-audit-count">0 eventos</span>
+    </div>
+
+    <form id="admin-audit-filter-form" class="admin-audit-filters" novalidate>
+        <div class="admin-audit-field admin-audit-field--actor">
+            <label for="admin-audit-actor">Administrador</label>
+            <input id="admin-audit-actor" name="actor" type="search" maxlength="120" autocomplete="off"
+                placeholder="Nombre o correo">
+        </div>
+
+        <div class="admin-audit-field">
+            <label for="admin-audit-action">Operación</label>
+            <select id="admin-audit-action" name="action">
+                <option value="">Todas las operaciones</option>
+                <option value="product.created">Producto creado</option>
+                <option value="product.updated">Producto actualizado</option>
+                <option value="product.activated">Producto activado</option>
+                <option value="product.deactivated">Producto desactivado</option>
+                <option value="product.status_changed">Estado de producto cambiado</option>
+                <option value="product.image_deleted">Imagen de producto eliminada</option>
+                <option value="product.deleted">Producto eliminado</option>
+                <option value="category.created">Categoría creada</option>
+                <option value="category.updated">Categoría actualizada</option>
+                <option value="category.deleted">Categoría eliminada</option>
+                <option value="admin_user.created">Administrador creado</option>
+                <option value="admin_user.updated">Administrador actualizado</option>
+                <option value="admin_user.activated">Administrador activado</option>
+                <option value="admin_user.deactivated">Administrador desactivado</option>
+                <option value="order.confirmed">Pedido confirmado</option>
+                <option value="order.cancelled">Pedido cancelado</option>
+                <option value="order.status_changed">Estado de pedido cambiado</option>
+            </select>
+        </div>
+
+        <div class="admin-audit-field">
+            <label for="admin-audit-entity-type">Entidad</label>
+            <select id="admin-audit-entity-type" name="entity_type">
+                <option value="">Todas las entidades</option>
+                <option value="product">Producto</option>
+                <option value="category">Categoría</option>
+                <option value="order">Pedido</option>
+                <option value="admin_user">Administrador</option>
+            </select>
+        </div>
+
+        <div class="admin-audit-field admin-audit-field--id">
+            <label for="admin-audit-entity-id">ID del registro</label>
+            <input id="admin-audit-entity-id" name="entity_id" type="text" maxlength="64" inputmode="numeric"
+                placeholder="Ej. 25">
+        </div>
+
+        <div class="admin-audit-field">
+            <label for="admin-audit-date-from">Fecha desde</label>
+            <input id="admin-audit-date-from" name="date_from" type="date">
+        </div>
+
+        <div class="admin-audit-field">
+            <label for="admin-audit-date-to">Fecha hasta</label>
+            <input id="admin-audit-date-to" name="date_to" type="date">
+        </div>
+
+        <div class="admin-audit-filter-actions">
+            <button type="submit" class="admin-audit-button admin-audit-button--primary">Buscar</button>
+            <button type="button" class="admin-audit-button admin-audit-button--secondary"
+                id="admin-audit-clear-button">Limpiar</button>
+        </div>
+    </form>
+
+    <div id="admin-audit-message" class="form-message" role="alert" aria-live="polite" hidden></div>
+
+    <div class="admin-audit-table-wrapper">
+        <table class="admin-audit-table">
+            <thead>
+                <tr>
+                    <th scope="col">Fecha y hora</th>
+                    <th scope="col">Administrador</th>
+                    <th scope="col">Operación</th>
+                    <th scope="col">Entidad</th>
+                    <th scope="col">Registro</th>
+                    <th scope="col">Detalles</th>
+                    <th scope="col">IP</th>
+                </tr>
+            </thead>
+            <tbody id="admin-audit-table-body"></tbody>
+        </table>
+
+        <div id="admin-audit-loading" class="admin-audit-state">Cargando eventos...</div>
+        <div id="admin-audit-empty" class="admin-audit-state" hidden>
+            <strong>No hay eventos para mostrar.</strong>
+            <small>Prueba modificando los filtros o consulta un rango de fechas diferente.</small>
+        </div>
+    </div>
+
+    <div class="admin-audit-pagination" aria-label="Paginación de auditoría">
+        <button type="button" class="admin-audit-button admin-audit-button--secondary" id="admin-audit-prev"
+            disabled>Anterior</button>
+        <span id="admin-audit-pagination-info" class="admin-audit-pagination__info">Página 1 de 1</span>
+        <button type="button" class="admin-audit-button admin-audit-button--secondary" id="admin-audit-next"
+            disabled>Siguiente</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-audit.js') }}" defer></script>
+{% endblock %}

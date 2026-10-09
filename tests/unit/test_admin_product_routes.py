@@ -9,6 +9,9 @@ from app import create_app
 from app.domain.exceptions import (
     DuplicateProductCodeError,
 )
+from tests.unit.audit_test_helpers import (
+    InMemoryAdminAuditRepository,
+)
 
 
 def _create_product(
@@ -261,6 +264,10 @@ def _create_test_app(
     monkeypatch,
 ):
     app = create_app("development")
+
+    app.extensions[
+        "admin_audit_repository"
+    ] = InMemoryAdminAuditRepository()
 
     management_service = (
         FakeProductManagementService()

@@ -1,3 +1,6 @@
+from app.infrastructure.database.repositories.admin_audit_repository_impl import (
+    SQLAlchemyAdminAuditRepository,
+)
 from app.infrastructure.database.repositories.admin_user_repository_impl import (
     SQLAlchemyAdminUserRepository,
 )
@@ -12,6 +15,7 @@ from app.infrastructure.database.repositories.product_repository_impl import (
 )
 
 __all__ = [
+    "SQLAlchemyAdminAuditRepository",
     "SQLAlchemyAdminUserRepository",
     "SQLAlchemyCategoryRepository",
     "SQLAlchemyOrderRepository",

@@ -825,3 +825,20 @@
     }
 
 }
+
+
+.admin-users-user__name {
+    display: block;
+    overflow: hidden;
+    color: var(--admin-brown);
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-users-user__email-address {
+    display: block;
+    overflow-wrap: anywhere;
+    color: var(--admin-text-soft);
+    font-size: 0.72rem;
+}

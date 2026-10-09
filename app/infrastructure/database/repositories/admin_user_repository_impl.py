@@ -35,6 +35,7 @@ class SQLAlchemyAdminUserRepository(
     ) -> AdminUserEntity:
         return AdminUserEntity(
             id=model.id,
+            name=model.name,
             email=model.email,
             password_hash=model.password_hash,
             is_active=model.is_active,
@@ -140,6 +141,7 @@ class SQLAlchemyAdminUserRepository(
         admin_user: AdminUserEntity,
     ) -> AdminUserEntity:
         model = AdminUser(
+            name=admin_user.name,
             email=admin_user.email,
             password_hash=admin_user.password_hash,
             is_active=admin_user.is_active,
@@ -173,6 +175,7 @@ class SQLAlchemyAdminUserRepository(
             )
 
         values = {
+            AdminUser.name: admin_user.name,
             AdminUser.email: admin_user.email,
             AdminUser.password_hash: admin_user.password_hash,
             AdminUser.is_active: admin_user.is_active,

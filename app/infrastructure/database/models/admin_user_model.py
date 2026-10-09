@@ -4,6 +4,7 @@ from sqlalchemy import Unicode, text
 from sqlalchemy.orm import validates
 
 from app.domain.normalization import (
+    normalize_admin_display_name,
     normalize_email,
 )
 from app.extensions import db
@@ -26,6 +27,11 @@ class AdminUser(db.Model):
         db.Integer,
         primary_key=True,
         autoincrement=True,
+    )
+
+    name = db.Column(
+        Unicode(120),
+        nullable=False,
     )
 
     email = db.Column(
@@ -73,6 +79,16 @@ class AdminUser(db.Model):
         value,
     ):
         return normalize_email(
+            value
+        )
+
+    @validates("name")
+    def validate_name(
+        self,
+        key,
+        value,
+    ):
+        return normalize_admin_display_name(
             value
         )
 

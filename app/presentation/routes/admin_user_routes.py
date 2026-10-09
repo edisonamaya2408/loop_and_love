@@ -56,6 +56,7 @@ def _admin_user_to_dict(
 
     return {
         "id": admin_user.id,
+        "name": admin_user.name,
         "email": admin_user.email,
         "is_active": admin_user.is_active,
         "created_at": (
@@ -177,6 +178,7 @@ def create_admin_user():
         user = (
             _get_admin_user_service()
             .create_user(
+                name=data.get("name"),
                 email=data.get(
                     "email"
                 ),

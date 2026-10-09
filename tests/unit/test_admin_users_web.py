@@ -1,3 +1,5 @@
+import re
+
 from app import create_app
 from app.domain.entities.admin_user import (
     AdminUserEntity,
@@ -92,6 +94,10 @@ class FakeAdminUserRepository:
 
         if existing is None:
             return None
+
+        existing.name = (
+            admin_user.name
+        )
 
         existing.email = (
             admin_user.email
@@ -295,4 +301,70 @@ def test_admin_users_page_does_not_remove_dashboard_navigation(
     assert (
         "Cerrar sesión"
         in body
+    )
+
+
+def test_admin_users_page_includes_name_fields(monkeypatch):
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=[_admin_user()],
+    )
+
+    response = app.test_client().get("/admin/users")
+
+    assert response.status_code == 200
+
+    body = response.get_data(as_text=True)
+
+    assert 'id="new-user-name"' in body
+    assert 'id="edit-user-name"' in body
+
+
+def test_admin_users_javascript_creates_and_updates_names(
+    monkeypatch,
+):
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    response = app.test_client().get(
+        "/static/js/admin-users.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(
+        as_text=True
+    )
+
+    normalized = (
+        body
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+    )
+
+    assert re.search(
+        r'getUsersElement\(\s*"new-user-name"\s*\)',
+        normalized,
+    )
+
+    assert re.search(
+        r'getUsersElement\(\s*"edit-user-name"\s*\)',
+        normalized,
+    )
+
+    assert "name: nameValue" in normalized
+    assert 'user.name || ""' in normalized
+
+    assert (
+        "admin-users-user__name"
+        in normalized
+    )
+
+    assert (
+        "admin-users-user__email-address"
+        in normalized
     )

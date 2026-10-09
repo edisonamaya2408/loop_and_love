@@ -164,6 +164,25 @@
 
                     </a>
 
+                    <a href="{{ url_for(
+                            'web.admin_audit_logs_page'
+                        ) }}" class="
+                            admin-nav__item
+                            {% if request.path == url_for('web.admin_audit_logs_page') %}
+                            admin-nav__item--active
+                            {% endif %}
+                        ">
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            ◷
+                        </span>
+
+                        <span>
+                            Auditoría
+                        </span>
+
+                    </a>
+
                 </div>
 
 
@@ -277,8 +296,8 @@
 
                     <div class="admin-user-chip">
 
-                        <span class="admin-user-chip__avatar" aria-hidden="true">
-                            L
+                        <span class="admin-user-chip__avatar" id="admin-user-avatar" aria-hidden="true">
+                            A
                         </span>
 
                         <span class="admin-user-chip__email" id="admin-user-email">
