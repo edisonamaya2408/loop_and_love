@@ -1996,3 +1996,26 @@
 [hidden] {
     display: none !important;
 }
+
+
+
+/* ==================================================
+   DASHBOARD DATA FRESHNESS AND LOAD STATES
+================================================== */
+
+.admin-dashboard-refresh-status {
+    margin: -1rem 0 1.25rem;
+    color: var(--admin-text-soft);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.admin-dashboard-refresh-status[data-state="success"] {
+    color: var(--admin-success);
+}
+
+.admin-dashboard-refresh-status[data-state="partial"],
+.admin-dashboard-refresh-status[data-state="error"] {
+    color: #95544E;
+}

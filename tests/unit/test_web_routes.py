@@ -1208,3 +1208,50 @@ def test_admin_css_preserves_hidden_attribute(
         "[hidden] { display: none !important; }"
         in normalized_css
     )
+
+
+
+def test_admin_dashboard_includes_refresh_status_and_distinguishes_order_errors(
+    monkeypatch,
+):
+    users = [
+        AdminUserEntity(
+            id=1,
+            email="admin@test.com",
+            password_hash="hash",
+            is_active=True,
+            token_version=0,
+        )
+    ]
+
+    app, _ = _create_web_app(
+        monkeypatch,
+        users=users,
+    )
+
+    client = app.test_client()
+
+    dashboard_response = client.get("/admin/dashboard")
+    assert dashboard_response.status_code == 200
+
+    dashboard_body = dashboard_response.get_data(as_text=True)
+
+    assert (
+        'id="admin-dashboard-refresh-status"'
+        in dashboard_body
+    )
+    assert (
+        "Consultando información del dashboard"
+        in dashboard_body
+    )
+
+    script_response = client.get("/static/js/admin.js")
+    assert script_response.status_code == 200
+
+    script_body = script_response.get_data(as_text=True)
+
+    assert "adminDashboardLoadInFlight" in script_body
+    assert "Actualización parcial" in script_body
+    assert "No fue posible actualizar los datos" in script_body
+    assert "No fue posible cargar los pedidos recientes" in script_body
+    assert "options.error" in script_body

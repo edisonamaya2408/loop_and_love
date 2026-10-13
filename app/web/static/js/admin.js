@@ -11,6 +11,8 @@ const ADMIN_DATA_REFRESH_INTERVAL_MS =
 let adminDashboardRefreshTimer =
     null;
 
+let adminDashboardLoadInFlight =
+    false;
 
 let adminDashboardVisibilityBound =
     false;
@@ -626,6 +628,11 @@ async function loadDashboardSummary() {
             "admin-pending-order-count"
         );
 
+    const refreshStatus =
+        document.getElementById(
+            "admin-dashboard-refresh-status"
+        );
+
 
     if (
         !productCount &&
@@ -635,6 +642,14 @@ async function loadDashboardSummary() {
     ) {
         return;
     }
+
+    if (adminDashboardLoadInFlight) {
+        return;
+    }
+
+    adminDashboardLoadInFlight = true;
+
+    let failedRequests = 0;
 
 
     const results =
@@ -722,6 +737,8 @@ async function loadDashboardSummary() {
 
     } catch (error) {
 
+        failedRequests += 1
+
         if (productCount) {
             productCount.textContent =
                 "—";
@@ -750,6 +767,8 @@ async function loadDashboardSummary() {
 
     } catch (error) {
 
+        failedRequests += 1
+
         if (categoryCount) {
             categoryCount.textContent =
                 "—";
@@ -764,6 +783,11 @@ async function loadDashboardSummary() {
                 results[2]
             );
 
+        if (!Array.isArray(data?.data)) {
+            throw new Error(
+                "La respuesta de pedidos recientes no tiene un formato válido."
+            );
+        }
 
         if (orderCount) {
             orderCount.textContent =
@@ -774,13 +798,20 @@ async function loadDashboardSummary() {
         }
 
         renderDashboardRecentOrders(
-            data?.data
+            data.data
         );
 
     } catch (error) {
 
+        failedRequests += 1;
+
+        if (orderCount) {
+            orderCount.textContent = "—";
+        }
+
         renderDashboardRecentOrders(
-            []
+            [],
+            { error: true }
         );
     }
 
@@ -816,11 +847,44 @@ async function loadDashboardSummary() {
                 "—";
         }
     }
+
+
+    if (refreshStatus) {
+        const updatedAt = new Date().toLocaleString(
+            "es-CO",
+            {
+                dateStyle: "medium",
+                timeStyle: "short",
+            }
+        );
+
+        refreshStatus.dataset.state =
+            failedRequests === 0
+                ? "success"
+                : failedRequests === results.length
+                    ? "error"
+                    : "partial";
+
+        if (failedRequests === 0) {
+            refreshStatus.textContent =
+                `Datos actualizados: ${updatedAt}`;
+        } else if (failedRequests === results.length) {
+            refreshStatus.textContent =
+                `No fue posible actualizar los datos. Último intento: ${updatedAt}`;
+        } else {
+            refreshStatus.textContent =
+                `Actualización parcial (${results.length - failedRequests} de ${results.length} consultas correctas): ${updatedAt}`;
+        }
+    }
+
+    adminDashboardLoadInFlight = false;
+
 }
 
 
 function renderDashboardRecentOrders(
-    orders
+    orders,
+    options = {}
 ) {
     const tableBody =
         document.getElementById(
@@ -837,6 +901,11 @@ function renderDashboardRecentOrders(
             "admin-dashboard-orders-empty"
         );
 
+    const message =
+        document.getElementById(
+            "admin-dashboard-orders-message"
+        );
+
 
     if (!tableBody) {
         return;
@@ -844,6 +913,11 @@ function renderDashboardRecentOrders(
 
 
     tableBody.replaceChildren();
+
+    if (message) {
+        message.hidden = true;
+        message.textContent = "";
+    }
 
 
     if (loading) {
@@ -855,6 +929,22 @@ function renderDashboardRecentOrders(
         Array.isArray(orders)
             ? orders
             : [];
+
+
+    if (options.error) {
+        if (empty) {
+            empty.hidden = true;
+        }
+
+        if (message) {
+            message.hidden = false;
+            message.textContent =
+                "No fue posible cargar los pedidos recientes. " +
+                "Verifica la conexión e inténtalo nuevamente.";
+        }
+
+        return;
+    }
 
 
     if (!normalizedOrders.length) {
