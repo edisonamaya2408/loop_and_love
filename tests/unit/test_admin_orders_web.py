@@ -1397,3 +1397,37 @@ def test_admin_orders_pending_notice_can_be_dismissed(
         'getOrdersElement(\n            "admin-orders-new-pending-notice-dismiss"'
         in normalized_body
     )
+
+
+
+def test_admin_order_detail_modal_supports_keyboard_focus_management(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[_admin_user()],
+    )
+
+    client = app.test_client()
+
+    page_response = client.get("/admin/orders")
+    assert page_response.status_code == 200
+
+    page_body = page_response.get_data(as_text=True)
+
+    assert 'role="dialog" aria-modal="true"' in page_body
+    assert 'tabindex="-1"' in page_body
+
+    script_response = client.get(
+        "/static/js/admin-orders.js"
+    )
+    assert script_response.status_code == 200
+
+    script_body = script_response.get_data(as_text=True)
+
+    assert "getOrderDetailFocusableElements" in script_body
+    assert "restoreOrderDetailFocus" in script_body
+    assert "handleOrderDetailModalKeydown" in script_body
+    assert 'event.key === "Escape"' in script_body
+    assert 'event.key !== "Tab"' in script_body
+    assert "detailFocusReturnElement" in script_body

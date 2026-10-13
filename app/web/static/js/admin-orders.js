@@ -19,6 +19,8 @@ const adminOrdersState = {
     unseenNewPendingCount: 0,
     pendingCountRequestInFlight: false,
     pendingNoticeDismissBound: false,
+    detailFocusReturnElement: null,
+    detailFocusOrderId: null,
 };
 
 
@@ -1114,29 +1116,185 @@ async function loadOrderDetail(
 }
 
 
-function openOrderDetail(
-    orderId
-) {
-    const modal =
-        getOrderDetailElement(
-            "admin-order-detail-modal"
+function getOrderDetailFocusableElements() {
+    const modal = getOrderDetailElement(
+        "admin-order-detail-modal"
+    );
+
+    const dialog = modal?.querySelector(
+        ".admin-orders-modal__dialog"
+    );
+
+    if (!dialog) {
+        return [];
+    }
+
+    const selector = [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+
+    return Array.from(
+        dialog.querySelectorAll(selector)
+    ).filter((element) => {
+        if (
+            element.hidden ||
+            element.closest("[hidden]") ||
+            element.getAttribute("aria-hidden") === "true"
+        ) {
+            return false;
+        }
+
+        const style = window.getComputedStyle(element);
+
+        return (
+            style.display !== "none" &&
+            style.visibility !== "hidden"
         );
+    });
+}
+
+
+function restoreOrderDetailFocus() {
+    const returnElement =
+        adminOrdersState.detailFocusReturnElement;
+
+    const orderId =
+        adminOrdersState.detailFocusOrderId;
+
+    adminOrdersState.detailFocusReturnElement = null;
+    adminOrdersState.detailFocusOrderId = null;
+
+    if (
+        returnElement &&
+        returnElement.isConnected &&
+        !returnElement.disabled &&
+        !returnElement.closest("[hidden]")
+    ) {
+        returnElement.focus();
+        return;
+    }
+
+    if (orderId !== null) {
+        const orderButton = Array.from(
+            document.querySelectorAll(
+                ".admin-orders-order__button[data-order-id]"
+            )
+        ).find(
+            (element) =>
+                element.dataset.orderId === String(orderId)
+        );
+
+        if (orderButton) {
+            orderButton.focus();
+            return;
+        }
+    }
+
+    const search = getOrdersElement(
+        "admin-orders-search"
+    );
+
+    if (search) {
+        search.focus();
+    }
+}
+
+
+function handleOrderDetailModalKeydown(event) {
+    const modal = getOrderDetailElement(
+        "admin-order-detail-modal"
+    );
+
+    if (!modal || modal.hidden) {
+        return;
+    }
+
+    if (event.key === "Escape") {
+        event.preventDefault();
+        closeOrderDetail();
+        return;
+    }
+
+    if (event.key !== "Tab") {
+        return;
+    }
+
+    const dialog = modal.querySelector(
+        ".admin-orders-modal__dialog"
+    );
+
+    const focusableElements =
+        getOrderDetailFocusableElements();
+
+    if (!focusableElements.length) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+    }
+
+    const first = focusableElements[0];
+    const last = focusableElements[
+        focusableElements.length - 1
+    ];
+
+    const activeElement = document.activeElement;
+    const focusIsInsideDialog =
+        dialog?.contains(activeElement);
+
+    if (event.shiftKey) {
+        if (
+            activeElement === first ||
+            !focusIsInsideDialog
+        ) {
+            event.preventDefault();
+            last.focus();
+        }
+
+        return;
+    }
+
+    if (
+        activeElement === last ||
+        !focusIsInsideDialog
+    ) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+
+function openOrderDetail(
+    orderId,
+    triggerElement = document.activeElement
+) {
+    const modal = getOrderDetailElement(
+        "admin-order-detail-modal"
+    );
 
     if (!modal) {
         return;
     }
 
+    adminOrdersState.detailFocusReturnElement = (
+        triggerElement &&
+        triggerElement !== document.body &&
+        typeof triggerElement.focus === "function"
+    )
+        ? triggerElement
+        : null;
 
-    adminOrdersState.currentOrder =
-        null;
+    adminOrdersState.detailFocusOrderId =
+        String(orderId);
 
-    adminOrdersState.updatingStatus =
-        false;
+    adminOrdersState.currentOrder = null;
+    adminOrdersState.updatingStatus = false;
 
-    updateOrderStatusActions(
-        null
-    );
-
+    updateOrderStatusActions(null);
 
     modal.hidden = false;
 
@@ -1149,22 +1307,28 @@ function openOrderDetail(
         "admin-modal-open"
     );
 
-
-    loadOrderDetail(
-        orderId
+    const closeButton = getOrderDetailElement(
+        "admin-order-detail-close"
     );
+
+    if (closeButton) {
+        closeButton.focus();
+    }
+
+    loadOrderDetail(orderId);
 }
 
 
 function closeOrderDetail() {
-    const modal =
-        getOrderDetailElement(
-            "admin-order-detail-modal"
-        );
+    const modal = getOrderDetailElement(
+        "admin-order-detail-modal"
+    );
 
     if (!modal) {
         return;
     }
+
+    const wasOpen = !modal.hidden;
 
     modal.hidden = true;
 
@@ -1177,15 +1341,14 @@ function closeOrderDetail() {
         "admin-modal-open"
     );
 
-    adminOrdersState.currentOrder =
-        null;
+    adminOrdersState.currentOrder = null;
+    adminOrdersState.updatingStatus = false;
 
-    adminOrdersState.updatingStatus =
-        false;
+    updateOrderStatusActions(null);
 
-    updateOrderStatusActions(
-        null
-    );
+    if (wasOpen) {
+        restoreOrderDetailFocus();
+    }
 }
 
 
@@ -1331,7 +1494,8 @@ function renderOrders(
                 "click",
                 () => {
                     openOrderDetail(
-                        order.id
+                        order.id,
+                        orderButton
                     );
                 }
             );
@@ -1974,15 +2138,7 @@ function setupOrderDetailModal() {
 
     document.addEventListener(
         "keydown",
-        (event) => {
-
-            if (
-                event.key === "Escape"
-            ) {
-                closeOrderDetail();
-            }
-
-        }
+        handleOrderDetailModalKeydown
     );
 }
 
@@ -2303,7 +2459,7 @@ function setupAdminOrdersAutoRefresh() {
     adminOrdersState.autoRefreshEnabled =
         true;
 
-        
+
     setupAdminOrdersNewPendingNotice();
 
     void checkForNewPendingOrders();

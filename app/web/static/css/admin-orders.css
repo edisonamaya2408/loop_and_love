@@ -1466,3 +1466,16 @@
     }
 
 }
+
+
+/* ==================================================
+   KEYBOARD ACCESSIBILITY
+================================================== */
+
+.admin-orders-modal__close:focus-visible,
+.admin-orders-order__button:focus-visible,
+.admin-orders-button:focus-visible,
+.admin-orders-pagination__button:focus-visible {
+    outline: 3px solid var(--admin-rose-deep);
+    outline-offset: 3px;
+}
