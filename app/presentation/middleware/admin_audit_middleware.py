@@ -1,5 +1,7 @@
 import logging
 
+from urllib.parse import urlsplit, urlunsplit
+
 from flask import (
     Flask,
     current_app,
@@ -19,6 +21,199 @@ from app.infrastructure.database.repositories.admin_audit_repository_impl import
 
 
 logger = logging.getLogger(__name__)
+
+
+
+_AUDIT_SNAPSHOT_FIELDS = {
+    "product": (
+        "id",
+        "code",
+        "name",
+        "description",
+        "price",
+        "category_id",
+        "image_url",
+        "is_active",
+    ),
+    "category": (
+        "id",
+        "name",
+        "slug",
+        "is_active",
+    ),
+    "admin_user": (
+        "id",
+        "name",
+        "email",
+        "is_active",
+    ),
+    "order": (
+        "id",
+        "status",
+    ),
+}
+
+_AUDIT_RESOURCE_TYPES = {
+    "products": "product",
+    "categories": "category",
+    "users": "admin_user",
+    "orders": "order",
+}
+
+
+def _audit_scalar(value):
+    """Convierte valores de modelos en valores seguros para JSON."""
+
+    from datetime import date, datetime
+    from decimal import Decimal
+
+    if value is None or type(value) in (bool, int, float):
+        return value
+
+    if isinstance(value, Decimal):
+        return str(value)
+
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+
+    if isinstance(value, str):
+        return value[:600]
+
+    return str(value)[:600]
+
+
+def _audit_snapshot_value(field: str, value):
+    """Normaliza los valores del snapshot para su auditoría."""
+
+    if field == "image_url" and isinstance(value, str):
+        try:
+            parsed = urlsplit(value)
+
+            value = urlunsplit(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    "",
+                    "",
+                )
+            )
+
+        except ValueError:
+            # Nunca guardamos una URL potencialmente malformada.
+            return "Imagen configurada"
+
+    return _audit_scalar(value)
+
+
+def _snapshot_entity(entity_type: str, entity_id):
+    """
+    Obtiene una copia independiente de los campos auditables.
+
+    Si la entidad no existe, SQLAlchemy no está disponible
+    o falla la lectura, devuelve None y deja evidencia en logs.
+    """
+
+    if entity_type not in _AUDIT_SNAPSHOT_FIELDS:
+        return None
+
+    if entity_id is None:
+        return None
+
+    try:
+        numeric_id = int(entity_id)
+    except (TypeError, ValueError):
+        return None
+
+    if numeric_id <= 0:
+        return None
+
+    if "sqlalchemy" not in current_app.extensions:
+        return None
+
+    try:
+        from app.extensions import db
+        from app.infrastructure.database.models.admin_user_model import (
+            AdminUser,
+        )
+        from app.infrastructure.database.models.category_model import (
+            Category,
+        )
+        from app.infrastructure.database.models.order_model import (
+            Order,
+        )
+        from app.infrastructure.database.models.product_model import (
+            Product,
+        )
+
+        models = {
+            "product": Product,
+            "category": Category,
+            "admin_user": AdminUser,
+            "order": Order,
+        }
+
+        entity = db.session.get(
+            models[entity_type],
+            numeric_id,
+            populate_existing=True,
+        )
+
+        if entity is None:
+            return None
+
+        return {
+            field: _audit_snapshot_value(
+                field,
+                getattr(entity, field),
+            )
+            for field in _AUDIT_SNAPSHOT_FIELDS[entity_type]
+        }
+
+    except Exception as error:
+        logger.error(
+            "Admin audit snapshot read failed "
+            "entity_type=%s entity_id=%s exception_type=%s",
+            entity_type,
+            numeric_id,
+            type(error).__name__,
+        )
+        return None
+
+
+def _build_field_changes(
+    before: dict | None,
+    after: dict | None,
+) -> dict:
+    """Construye diferencias reales sin incluir campos idénticos."""
+
+    if before is None and after is None:
+        return {}
+
+    fields = set(before or {}) | set(after or {})
+    changes = {}
+
+    for field in sorted(fields):
+        previous_value = (
+            before.get(field)
+            if before is not None
+            else None
+        )
+
+        new_value = (
+            after.get(field)
+            if after is not None
+            else None
+        )
+
+        if previous_value != new_value:
+            changes[field] = {
+                "before": previous_value,
+                "after": new_value,
+            }
+
+    return changes
+
 
 
 _SENSITIVE_KEY_PARTS = (
@@ -385,6 +580,7 @@ def _build_mutation_description(
         )
     )
 
+    
     if entity_type == "order":
         history = (
             data.get("status_history", [])
@@ -407,10 +603,8 @@ def _build_mutation_description(
         )
 
         details = {
-            "previous_status": (
-                last_history.get(
-                    "previous_status"
-                )
+            "previous_status": last_history.get(
+                "previous_status"
             ),
             "new_status": status,
         }
@@ -418,7 +612,74 @@ def _build_mutation_description(
     else:
         details = {}
 
-        if fields:
+    # Registrar la existencia de cambios sensibles sin almacenar
+    # contraseñas, hashes ni valores de credenciales.
+    if fields.get("credentials_changed") is True:
+        details["credentials_changed"] = True
+
+    if fields.get("file_attached") is True:
+        details["file_attached"] = True
+
+    snapshot_enabled = getattr(
+        g,
+        "admin_audit_snapshot_enabled",
+        False,
+    )
+
+    if snapshot_enabled:
+        before = getattr(
+            g,
+            "admin_audit_before",
+            None,
+        )
+
+        after = None
+        comparison_valid = False
+
+        if action.endswith(".created"):
+            after = _snapshot_entity(
+                entity_type,
+                entity_id,
+            )
+            comparison_valid = after is not None
+
+        elif action.endswith(".deleted"):
+            comparison_valid = before is not None
+            after = None
+
+        elif action == "product.image_deleted":
+            after = _snapshot_entity(
+                entity_type,
+                entity_id,
+            )
+            comparison_valid = (
+                before is not None
+                and after is not None
+            )
+
+        elif before is not None:
+            after = _snapshot_entity(
+                entity_type,
+                entity_id,
+            )
+            comparison_valid = after is not None
+
+        if comparison_valid:
+            details["changes"] = _build_field_changes(
+                before,
+                after,
+            )
+            details["comparison_available"] = True
+
+        else:
+            # No presentamos datos de la petición como si fueran
+            # una comparación real de valores persistidos.
+            details["comparison_available"] = False
+
+    else:
+        # Compatibilidad con las pruebas unitarias que usan
+        # una aplicación Flask sin SQLAlchemy inicializado.
+        if entity_type != "order" and fields:
             details["fields"] = fields
 
         summary = _response_summary(
@@ -437,10 +698,70 @@ def _build_mutation_description(
     }
 
 
+
 def register_admin_audit(
     app: Flask,
 ) -> None:
     """Registra eventos de mutaciones administrativas exitosas."""
+
+    
+    @app.before_request
+    def capture_admin_audit_before():
+        """Captura el estado persistido antes de una mutación."""
+
+        g.admin_audit_snapshot_enabled = (
+            "sqlalchemy" in current_app.extensions
+        )
+        g.admin_audit_before = None
+
+        if not g.admin_audit_snapshot_enabled:
+            return None
+
+        if request.method not in {
+            "PUT",
+            "PATCH",
+            "DELETE",
+        }:
+            return None
+
+        parts = [
+            part
+            for part in request.path.strip("/").split("/")
+            if part
+        ]
+
+        if (
+            len(parts) < 4
+            or parts[:2] != ["api", "admin"]
+            or not parts[3].isdigit()
+        ):
+            return None
+
+        entity_type = _AUDIT_RESOURCE_TYPES.get(
+            parts[2]
+        )
+
+        if entity_type is None:
+            return None
+
+        try:
+            g.admin_audit_before = _snapshot_entity(
+                entity_type,
+                parts[3],
+            )
+        except Exception as error:
+            # No interrumpimos la operación de negocio.
+            # La falta de captura debe quedar visible en los logs.
+            logger.error(
+                "Admin audit before-snapshot failed "
+                "entity_type=%s entity_id=%s exception_type=%s",
+                entity_type,
+                parts[3],
+                type(error).__name__,
+            )
+
+        return None
+
 
     @app.after_request
     def persist_admin_audit(response):

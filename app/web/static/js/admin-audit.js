@@ -97,29 +97,304 @@ function appendTextCell(row, value, className) {
     return cell;
 }
 
+
+const AUDIT_FIELD_LABELS = {
+    id: "ID",
+    code: "Código",
+    name: "Nombre",
+    description: "Descripción",
+    price: "Precio",
+    category_id: "Categoría (ID)",
+    image_url: "Imagen",
+    is_active: "Estado",
+    slug: "Slug",
+    email: "Correo",
+    status: "Estado del pedido",
+    customer_name: "Cliente",
+    phone: "Teléfono",
+    city: "Ciudad",
+    address: "Dirección",
+    observations: "Observaciones",
+    total: "Total",
+    unit_price: "Precio unitario",
+    quantity: "Cantidad",
+    line_total: "Total de línea",
+};
+
+const AUDIT_STATUS_LABELS = {
+    pending: "Pendiente",
+    confirmed: "Confirmado",
+    cancelled: "Cancelado",
+};
+
+function auditFieldLabel(field) {
+    return AUDIT_FIELD_LABELS[field]
+        || String(field).replaceAll("_", " ");
+}
+
+function formatAuditValue(field, value) {
+    if (
+        value === null
+        || value === undefined
+        || value === ""
+    ) {
+        return "—";
+    }
+
+    if (
+        field === "is_active"
+        && typeof value === "boolean"
+    ) {
+        return value ? "Activo" : "Inactivo";
+    }
+
+    if (
+        field === "status"
+        && typeof value === "string"
+    ) {
+        return AUDIT_STATUS_LABELS[value] || value;
+    }
+
+    if (
+        ["price", "total", "unit_price", "line_total"]
+            .includes(field)
+    ) {
+        const amount = Number(value);
+
+        if (Number.isFinite(amount)) {
+            return new Intl.NumberFormat("es-CO", {
+                style: "currency",
+                currency: "COP",
+                maximumFractionDigits: 2,
+            }).format(amount);
+        }
+    }
+
+    if (field === "image_url" && typeof value === "string") {
+        try {
+            const imageUrl = new URL(
+                value,
+                window.location.origin
+            );
+
+            // No mostramos parámetros de consulta ni fragmentos.
+            return `${imageUrl.origin}${imageUrl.pathname}`;
+        } catch {
+            return "Imagen configurada";
+        }
+    }
+
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+
+    return String(value);
+}
+
+function appendAuditNote(container, message, modifier) {
+    const note = document.createElement("p");
+
+    note.className = modifier
+        ? `admin-audit-note ${modifier}`
+        : "admin-audit-note";
+
+    note.textContent = message;
+    container.append(note);
+
+    return note;
+}
+
+function renderAuditChangeTable(changes) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "admin-audit-change-table-wrapper";
+
+    const table = document.createElement("table");
+    table.className = "admin-audit-change-table";
+
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+
+    ["Campo", "Valor anterior", "Valor nuevo"].forEach(
+        (label) => {
+            const th = document.createElement("th");
+            th.scope = "col";
+            th.textContent = label;
+            headerRow.append(th);
+        }
+    );
+
+    thead.append(headerRow);
+
+    const tbody = document.createElement("tbody");
+
+    Object.entries(changes).forEach(([field, change]) => {
+        const row = document.createElement("tr");
+
+        const normalizedChange = (
+            change
+            && typeof change === "object"
+            && !Array.isArray(change)
+        )
+            ? change
+            : { before: null, after: change };
+
+        const fieldCell = document.createElement("td");
+        fieldCell.textContent = auditFieldLabel(field);
+
+        const beforeCell = document.createElement("td");
+        beforeCell.textContent = formatAuditValue(
+            field,
+            normalizedChange.before
+        );
+
+        const afterCell = document.createElement("td");
+        afterCell.textContent = formatAuditValue(
+            field,
+            normalizedChange.after
+        );
+
+        row.append(fieldCell, beforeCell, afterCell);
+        tbody.append(row);
+    });
+
+    table.append(thead, tbody);
+    wrapper.append(table);
+
+    return wrapper;
+}
+
+
+
 function renderAuditDetails(details, requestId) {
     const detailsElement = document.createElement("details");
     detailsElement.className = "admin-audit-details";
 
+    const safeDetails = (
+        details
+        && typeof details === "object"
+        && !Array.isArray(details)
+    )
+        ? details
+        : {};
+
+    const changes = (
+        safeDetails.changes
+        && typeof safeDetails.changes === "object"
+        && !Array.isArray(safeDetails.changes)
+    )
+        ? { ...safeDetails.changes }
+        : {};
+
+    // El identificador del registro ya se presenta en su columna.
+    delete changes.id;
+
+    // Compatibilidad con eventos históricos de pedidos que solo
+    // almacenaban previous_status y new_status.
+    if (
+        Object.keys(changes).length === 0
+        && Object.prototype.hasOwnProperty.call(
+            safeDetails,
+            "previous_status"
+        )
+        && Object.prototype.hasOwnProperty.call(
+            safeDetails,
+            "new_status"
+        )
+    ) {
+        changes.status = {
+            before: safeDetails.previous_status,
+            after: safeDetails.new_status,
+        };
+    }
+
+    const changeCount = Object.keys(changes).length;
+
     const summary = document.createElement("summary");
-    summary.textContent = "Ver detalles";
+    summary.textContent = changeCount > 0
+        ? `Ver cambios (${changeCount})`
+        : "Ver detalles";
 
-    const pre = document.createElement("pre");
-    pre.textContent = JSON.stringify(
-        {
-            cambios: details || {},
-            request_id: requestId || null,
-        },
-        null,
-        2
-    );
+    const content = document.createElement("div");
+    content.className = "admin-audit-details__content";
 
-    detailsElement.append(summary, pre);
+    if (changeCount > 0) {
+        content.append(
+            renderAuditChangeTable(changes)
+        );
+    } else if (safeDetails.comparison_available === false) {
+        appendAuditNote(
+            content,
+            "La operación fue registrada, pero no fue posible "
+            + "comparar de forma confiable los valores persistidos."
+        );
+    } else if (safeDetails.comparison_available === true) {
+        appendAuditNote(
+            content,
+            "No se detectaron diferencias en los campos auditables."
+        );
+    }
+
+    if (safeDetails.credentials_changed === true) {
+        appendAuditNote(
+            content,
+            "Se modificaron credenciales. Por seguridad, "
+            + "su contenido no se muestra."
+        );
+    }
+
+    if (safeDetails.file_attached === true) {
+        appendAuditNote(
+            content,
+            "La petición incluyó un archivo adjunto."
+        );
+    }
+
+    // Conserva información útil de los eventos históricos,
+    // sin presentar el objeto completo como JSON.
+    const legacyDetails = {};
+
+    if (
+        safeDetails.fields
+        && typeof safeDetails.fields === "object"
+    ) {
+        legacyDetails.campos = safeDetails.fields;
+    }
+
+    if (
+        safeDetails.result
+        && typeof safeDetails.result === "object"
+    ) {
+        legacyDetails.resultado = safeDetails.result;
+    }
+
+    if (Object.keys(legacyDetails).length > 0) {
+        const pre = document.createElement("pre");
+
+        pre.textContent = JSON.stringify(
+            legacyDetails,
+            null,
+            2
+        );
+
+        content.append(pre);
+    }
+
+    if (requestId) {
+        const metadata = document.createElement("small");
+        metadata.className = "admin-audit-details__meta";
+        metadata.textContent = `Solicitud: ${requestId}`;
+
+        content.append(metadata);
+    }
+
+    detailsElement.append(summary, content);
 
     const cell = document.createElement("td");
     cell.append(detailsElement);
+
     return cell;
 }
+
 
 function renderAuditEvents(events) {
     const body = getAuditElement(

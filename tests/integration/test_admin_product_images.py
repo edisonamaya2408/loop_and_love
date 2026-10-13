@@ -2,9 +2,14 @@ from io import BytesIO
 from uuid import uuid4
 
 import pytest
+import json
+
 from PIL import Image
 
 from app.domain.entities.admin_user import AdminUserEntity
+from app.infrastructure.database.models.admin_audit_log_model import (
+    AdminAuditLog,
+)
 from app.domain.entities.category import CategoryEntity
 from app.domain.entities.product import ProductEntity
 from app.infrastructure.database.models.admin_user_model import AdminUser
@@ -590,3 +595,29 @@ def test_admin_can_delete_product_image_without_deleting_product(
     )
 
     assert not physical_path.exists()
+
+    audit_event = (
+        integration_session.query(AdminAuditLog)
+        .filter_by(
+            action="product.image_deleted",
+            entity_type="product",
+            entity_id=str(persisted_product.id),
+        )
+        .order_by(AdminAuditLog.id.desc())
+        .first()
+    )
+
+    assert audit_event is not None
+
+    audit_details = json.loads(
+        audit_event.details_json
+    )
+
+    assert audit_details["comparison_available"] is True
+
+    assert audit_details["changes"] == {
+        "image_url": {
+            "before": image_url,
+            "after": None,
+        }
+    }

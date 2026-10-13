@@ -8,12 +8,17 @@ from flask import (
     jsonify,
     request,
 )
+import app.presentation.middleware.admin_audit_middleware as audit_middleware
 
 from app.presentation.middleware.admin_audit_middleware import (
     register_admin_audit,
 )
 from tests.unit.audit_test_helpers import (
     InMemoryAdminAuditRepository,
+)
+from app.presentation.middleware.admin_audit_middleware import (
+    _build_field_changes,
+    register_admin_audit,
 )
 
 
@@ -498,3 +503,145 @@ def test_audit_does_not_record_admin_list_queries():
 
     assert response.status_code == 200
     assert repository.events == []
+
+
+
+def test_audit_field_changes_only_contains_modified_values():
+    before = {
+        "id": 10,
+        "name": "Bolso beige",
+        "price": "85000.00",
+        "is_active": True,
+    }
+
+    after = {
+        "id": 10,
+        "name": "Bolso artesanal beige",
+        "price": "95000.00",
+        "is_active": True,
+    }
+
+    changes = _build_field_changes(
+        before,
+        after,
+    )
+
+    assert changes == {
+        "name": {
+            "before": "Bolso beige",
+            "after": "Bolso artesanal beige",
+        },
+        "price": {
+            "before": "85000.00",
+            "after": "95000.00",
+        },
+    }
+
+
+def test_audit_field_changes_handles_creation():
+    after = {
+        "id": 10,
+        "name": "Amigurumi",
+    }
+
+    changes = _build_field_changes(
+        None,
+        after,
+    )
+
+    assert changes == {
+        "id": {
+            "before": None,
+            "after": 10,
+        },
+        "name": {
+            "before": None,
+            "after": "Amigurumi",
+        },
+    }
+
+
+def test_audit_field_changes_handles_deletion():
+    before = {
+        "id": 10,
+        "name": "Amigurumi",
+    }
+
+    changes = _build_field_changes(
+        before,
+        None,
+    )
+
+    assert changes == {
+        "id": {
+            "before": 10,
+            "after": None,
+        },
+        "name": {
+            "before": "Amigurumi",
+            "after": None,
+        },
+    }
+
+
+def test_audit_field_changes_returns_empty_when_unchanged():
+    values = {
+        "id": 10,
+        "name": "Amigurumi",
+        "is_active": True,
+    }
+
+    assert _build_field_changes(
+        values,
+        values.copy(),
+    ) == {}
+
+
+
+def test_audit_marks_credential_change_without_storing_secret(
+    monkeypatch,
+):
+    app, repository = _create_audit_test_app()
+
+    # Activa el flujo de comparación sin depender de una
+    # conexión real a la base en esta prueba unitaria.
+    app.extensions["sqlalchemy"] = object()
+
+    snapshot = {
+        "name": "Carlos",
+        "email": "carlos@example.com",
+        "is_active": True,
+    }
+
+    monkeypatch.setattr(
+        audit_middleware,
+        "_snapshot_entity",
+        lambda entity_type, entity_id: snapshot.copy(),
+    )
+
+    secret = "ClaveSuperSecreta-NoRegistrar"
+
+    response = app.test_client().patch(
+        "/api/admin/users/4",
+        json={
+            "email": "carlos@example.com",
+            "password": secret,
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(repository.events) == 1
+
+    event = repository.events[0]
+
+    assert event.action == "admin_user.updated"
+    assert event.details["credentials_changed"] is True
+
+    serialized_details = json.dumps(
+        event.details,
+        ensure_ascii=False,
+    )
+
+    assert secret not in serialized_details
+    assert "password_hash" not in serialized_details
+

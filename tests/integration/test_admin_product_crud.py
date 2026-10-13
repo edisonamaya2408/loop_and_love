@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import uuid4
 
+import json
 import pytest
 
 from app.domain.entities.admin_user import AdminUserEntity
@@ -8,6 +9,9 @@ from app.domain.entities.category import CategoryEntity
 from app.domain.entities.product import ProductEntity
 from app.infrastructure.database.models.admin_user_model import (
     AdminUser,
+)
+from app.infrastructure.database.models.admin_audit_log_model import (
+    AdminAuditLog,
 )
 from app.infrastructure.database.models.category_model import (
     Category,
@@ -26,6 +30,13 @@ from app.infrastructure.database.repositories.product_repository_impl import (
 )
 from app.infrastructure.security.password_service import (
     PasswordService,
+)
+from app.application.services.order_service import OrderService
+
+from app.infrastructure.database.models.order_model import Order
+
+from app.infrastructure.database.repositories.order_repository_impl import (
+    SQLAlchemyOrderRepository,
 )
 
 
@@ -370,6 +381,50 @@ def test_admin_can_update_product(
     )
     assert persisted.is_active is False
 
+    # Verificar que el evento de auditoría contiene una
+    # comparación de valores persistidos antes y después.
+    audit_event = (
+        integration_session.query(AdminAuditLog)
+        .filter_by(
+            action="product.updated",
+            entity_type="product",
+            entity_id=str(persisted_product.id),
+        )
+        .order_by(AdminAuditLog.id.desc())
+        .first()
+    )
+
+    assert audit_event is not None
+
+    audit_details = json.loads(
+        audit_event.details_json
+    )
+
+    assert audit_details["comparison_available"] is True
+
+    changes = audit_details["changes"]
+
+    assert changes["name"] == {
+        "before": "Integration Product",
+        "after": "Producto actualizado Integration",
+    }
+
+    assert changes["description"] == {
+        "before": "Producto de integración.",
+        "after": "Descripción actualizada.",
+    }
+
+    assert changes["price"] == {
+        "before": "15000.00",
+        "after": "32000.75",
+    }
+
+    assert changes["is_active"] == {
+        "before": True,
+        "after": False,
+    }
+
+
 
 @pytest.mark.integration
 def test_admin_can_toggle_product_status(
@@ -440,6 +495,30 @@ def test_admin_can_delete_product(
     )
 
     assert persisted is None
+
+    audit_event = (
+        integration_session.query(AdminAuditLog)
+        .filter_by(
+            action="product.deleted",
+            entity_type="product",
+            entity_id=str(product_id),
+        )
+        .order_by(AdminAuditLog.id.desc())
+        .first()
+    )
+
+    assert audit_event is not None
+
+    audit_details = json.loads(
+        audit_event.details_json
+    )
+
+    assert audit_details["comparison_available"] is True
+
+    assert audit_details["changes"]["name"] == {
+        "before": persisted_product.name,
+        "after": None,
+    }
 
 
 @pytest.mark.integration
@@ -675,3 +754,89 @@ def test_admin_rejects_price_with_more_than_two_decimals(
         "máximo 2 decimales"
         in data["error"]["message"]
     )
+
+
+@pytest.mark.integration
+def test_admin_order_status_audit_records_previous_and_new_status(
+    client,
+    auth_token,
+    persisted_product,
+    integration_session,
+):
+    order_service = OrderService(
+        repository=SQLAlchemyOrderRepository(
+            session=integration_session
+        ),
+        product_repository=SQLAlchemyProductRepository(
+            session=integration_session
+        ),
+    )
+
+    order = order_service.create_order(
+        name="Cliente Auditoría",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations="Prueba de auditoría de estado.",
+        items=[
+            {
+                "product_id": persisted_product.id,
+                "quantity": 1,
+            }
+        ],
+    )
+
+    order_id = order.id
+
+    try:
+        response = client.patch(
+            f"/api/admin/orders/{order_id}/status",
+            json={"status": "confirmed"},
+            headers=_auth_headers(auth_token),
+        )
+
+        assert response.status_code == 200
+
+        payload = response.get_json()
+
+        assert payload["success"] is True
+        assert payload["data"]["status"] == "confirmed"
+
+        audit_event = (
+            integration_session.query(AdminAuditLog)
+            .filter_by(
+                action="order.confirmed",
+                entity_type="order",
+                entity_id=str(order_id),
+            )
+            .order_by(AdminAuditLog.id.desc())
+            .first()
+        )
+
+        assert audit_event is not None
+
+        audit_details = json.loads(
+            audit_event.details_json
+        )
+
+        assert audit_details["comparison_available"] is True
+
+        assert audit_details["changes"]["status"] == {
+            "before": "pending",
+            "after": "confirmed",
+        }
+
+        assert audit_details["previous_status"] == "pending"
+        assert audit_details["new_status"] == "confirmed"
+
+    finally:
+        integration_session.expire_all()
+
+        persisted_order = integration_session.get(
+            Order,
+            order_id,
+        )
+
+        if persisted_order is not None:
+            integration_session.delete(persisted_order)
+            integration_session.commit()
