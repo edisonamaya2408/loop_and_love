@@ -1524,3 +1524,38 @@
     background: #F6E2E0;
     color: #95544E;
 }
+
+
+
+/* ==================================================
+   ORDER TRACKING: CURRENT STATUS AND RELATIVE TIME
+================================================== */
+
+.admin-orders-status-current-summary {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--admin-border);
+    border-left: 3px solid var(--admin-brown);
+    border-radius: 10px;
+    background: var(--admin-surface-soft);
+}
+
+.admin-orders-status-current-summary strong {
+    color: var(--admin-brown);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.admin-orders-status-current-summary span {
+    color: var(--admin-text-soft);
+    font-size: 0.73rem;
+    line-height: 1.5;
+}
+
+.admin-orders-status-history__relative {
+    color: var(--admin-text-soft);
+    font-size: 0.7rem;
+    line-height: 1.4;
+}

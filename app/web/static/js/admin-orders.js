@@ -341,6 +341,116 @@ function formatDate(
 }
 
 
+function formatRelativeTime(
+    value,
+    now = new Date()
+) {
+    if (!value) {
+        return null;
+    }
+
+    const eventDate = new Date(value);
+    const referenceDate = (
+        now instanceof Date
+            ? now
+            : new Date(now)
+    );
+
+    if (
+        Number.isNaN(eventDate.getTime()) ||
+        Number.isNaN(referenceDate.getTime())
+    ) {
+        return null;
+    }
+
+    const differenceSeconds = Math.round(
+        (eventDate.getTime() - referenceDate.getTime())
+        / 1000
+    );
+
+    if (Math.abs(differenceSeconds) < 5) {
+        return "ahora";
+    }
+
+    const absoluteSeconds = Math.abs(
+        differenceSeconds
+    );
+
+    let unit;
+    let divisor;
+    let fallbackLabel;
+
+    if (absoluteSeconds < 60) {
+        unit = "second";
+        divisor = 1;
+        fallbackLabel = "segundo";
+    } else if (absoluteSeconds < 3600) {
+        unit = "minute";
+        divisor = 60;
+        fallbackLabel = "minuto";
+    } else if (absoluteSeconds < 86400) {
+        unit = "hour";
+        divisor = 3600;
+        fallbackLabel = "hora";
+    } else if (absoluteSeconds < 2592000) {
+        unit = "day";
+        divisor = 86400;
+        fallbackLabel = "día";
+    } else if (absoluteSeconds < 31536000) {
+        unit = "month";
+        divisor = 2629800;
+        fallbackLabel = "mes";
+    } else {
+        unit = "year";
+        divisor = 31557600;
+        fallbackLabel = "año";
+    }
+
+    const amount = Math.max(
+        1,
+        Math.round(
+            absoluteSeconds / divisor
+        )
+    );
+
+    if (
+        typeof Intl.RelativeTimeFormat === "function"
+    ) {
+        const formatter = new Intl.RelativeTimeFormat(
+            "es-CO",
+            {
+                numeric: "auto",
+            }
+        );
+
+        const difference = (
+            differenceSeconds < 0
+                ? -amount
+                : amount
+        );
+
+        return formatter.format(
+            difference,
+            unit
+        );
+    }
+
+    const pluralLabel = (
+        amount === 1
+            ? fallbackLabel
+            : fallbackLabel === "mes"
+                ? "meses"
+                : fallbackLabel === "día"
+                    ? "días"
+                    : `${fallbackLabel}s`
+    );
+
+    return differenceSeconds < 0
+        ? `hace ${amount} ${pluralLabel}`
+        : `dentro de ${amount} ${pluralLabel}`;
+}
+
+
 function getStatusLabel(
     status
 ) {
@@ -431,7 +541,8 @@ function getPendingAgePresentation(
 
 
 function renderOrderStatusHistory(
-    history
+    history,
+    currentStatus
 ) {
     const container =
         getOrderDetailElement(
@@ -468,6 +579,53 @@ function renderOrderStatusHistory(
         );
 
         return;
+    }
+
+
+    const latestEntry = normalizedHistory[0];
+
+    if (
+        latestEntry &&
+        latestEntry.new_status === currentStatus
+    ) {
+        const relativeTime = formatRelativeTime(
+            latestEntry.changed_at
+        );
+
+        if (relativeTime) {
+            const currentSummary =
+                document.createElement("div");
+
+            currentSummary.className =
+                "admin-orders-status-current-summary";
+
+            const currentStatusLabel =
+                createTextElement(
+                    "strong",
+                    null,
+                    `Estado actual: ${getStatusLabel(
+                        currentStatus
+                    )}`
+                );
+
+            const currentStatusDuration =
+                createTextElement(
+                    "span",
+                    null,
+                    `Desde ${formatDate(
+                        latestEntry.changed_at
+                    )} · ${relativeTime}`
+                );
+
+            currentSummary.append(
+                currentStatusLabel,
+                currentStatusDuration
+            );
+
+            container.append(
+                currentSummary
+            );
+        }
     }
 
 
@@ -592,11 +750,40 @@ function renderOrderStatusHistory(
                 );
 
 
-            content.append(
-                transition,
-                status,
-                date
+            date.title = formatDate(
+                entry?.changed_at
             );
+
+
+            const relativeTime = formatRelativeTime(
+                entry?.changed_at
+            );
+
+            if (relativeTime) {
+                const relativeDate = createTextElement(
+                    "span",
+                    "admin-orders-status-history__relative",
+                    relativeTime
+                );
+
+                relativeDate.setAttribute(
+                    "aria-label",
+                    `Tiempo transcurrido desde este cambio: ${relativeTime}`
+                );
+
+                content.append(
+                    transition,
+                    status,
+                    date,
+                    relativeDate
+                );
+            } else {
+                content.append(
+                    transition,
+                    status,
+                    date
+                );
+            }
 
 
             item.append(
@@ -735,7 +922,8 @@ function renderOrderDetail(
     );
 
     renderOrderStatusHistory(
-        order.status_history
+        order.status_history,
+        order.status
     );
 
     if (total) {

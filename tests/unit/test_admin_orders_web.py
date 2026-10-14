@@ -1474,3 +1474,46 @@ def test_admin_orders_displays_pending_age_indicators(
     assert ".admin-orders-pending-age--fresh" in css
     assert ".admin-orders-pending-age--attention" in css
     assert ".admin-orders-pending-age--urgent" in css
+
+
+
+def test_admin_order_history_displays_relative_time_and_current_status(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[_admin_user()],
+    )
+
+    client = app.test_client()
+
+    script_response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert script_response.status_code == 200
+
+    script = script_response.get_data(
+        as_text=True
+    )
+
+    assert "function formatRelativeTime(" in script
+    assert "Intl.RelativeTimeFormat" in script
+    assert "function renderOrderStatusHistory(" in script
+    assert "latestEntry.new_status === currentStatus" in script
+    assert "admin-orders-status-current-summary" in script
+    assert "admin-orders-status-history__relative" in script
+    assert "order.status_history" in script
+
+    css_response = client.get(
+        "/static/css/admin-orders.css"
+    )
+
+    assert css_response.status_code == 200
+
+    css = css_response.get_data(
+        as_text=True
+    )
+
+    assert ".admin-orders-status-current-summary" in css
+    assert ".admin-orders-status-history__relative" in css
