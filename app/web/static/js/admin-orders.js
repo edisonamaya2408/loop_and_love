@@ -358,6 +358,78 @@ function getStatusLabel(
 }
 
 
+function getPendingAgePresentation(
+    createdAt,
+    now = new Date()
+) {
+    if (!createdAt) {
+        return null;
+    }
+
+    const createdDate = new Date(createdAt);
+    const currentTimestamp = now.getTime();
+
+    if (
+        Number.isNaN(createdDate.getTime()) ||
+        Number.isNaN(currentTimestamp)
+    ) {
+        return null;
+    }
+
+    const elapsedMilliseconds = Math.max(
+        0,
+        currentTimestamp - createdDate.getTime()
+    );
+
+    const elapsedMinutes = Math.floor(
+        elapsedMilliseconds / 60000
+    );
+
+    let elapsedLabel;
+
+    if (elapsedMinutes < 1) {
+        elapsedLabel = "menos de 1 min";
+    } else if (elapsedMinutes < 60) {
+        elapsedLabel = `${elapsedMinutes} min`;
+    } else {
+        const elapsedHours = Math.floor(
+            elapsedMinutes / 60
+        );
+
+        if (elapsedHours < 24) {
+            elapsedLabel = `${elapsedHours} h`;
+        } else {
+            const days = Math.floor(
+                elapsedHours / 24
+            );
+
+            const hours = elapsedHours % 24;
+
+            elapsedLabel =
+                `${days} ${days === 1 ? "día" : "días"}`;
+
+            if (hours > 0) {
+                elapsedLabel += ` ${hours} h`;
+            }
+        }
+    }
+
+    let tone = "fresh";
+
+    if (elapsedMinutes >= 240) {
+        tone = "urgent";
+    } else if (elapsedMinutes >= 60) {
+        tone = "attention";
+    }
+
+    return {
+        label: `Pendiente hace ${elapsedLabel}`,
+        tone,
+        elapsedMinutes,
+    };
+}
+
+
 function renderOrderStatusHistory(
     history
 ) {
@@ -1597,30 +1669,44 @@ function renderOrders(
             );
 
 
-            const statusCell =
-                createCell();
+            const statusCell = createCell();
 
-
-            const status =
-                document.createElement(
-                    "span"
-                );
-
+            const status = document.createElement("span");
 
             status.className =
                 "admin-orders-status " +
                 `admin-orders-status--${order.status}`;
 
+            status.textContent = getStatusLabel(order.status);
 
-            status.textContent =
-                getStatusLabel(
-                    order.status
+            const statusGroup = document.createElement("div");
+            statusGroup.className = "admin-orders-status-group";
+
+            statusGroup.append(status);
+
+            if (order.status === "pending") {
+                const pendingAge = getPendingAgePresentation(
+                    order.created_at
                 );
 
+                if (pendingAge) {
+                    const ageElement = createTextElement(
+                        "span",
+                        "admin-orders-pending-age " +
+                        `admin-orders-pending-age--${pendingAge.tone}`,
+                        pendingAge.label
+                    );
 
-            statusCell.append(
-                status
-            );
+                    ageElement.setAttribute(
+                        "aria-label",
+                        `Antigüedad del pedido: ${pendingAge.label}`
+                    );
+
+                    statusGroup.append(ageElement);
+                }
+            }
+
+            statusCell.append(statusGroup);
 
 
             const dateCell =

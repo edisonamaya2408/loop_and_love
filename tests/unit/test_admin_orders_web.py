@@ -1431,3 +1431,46 @@ def test_admin_order_detail_modal_supports_keyboard_focus_management(
     assert 'event.key === "Escape"' in script_body
     assert 'event.key !== "Tab"' in script_body
     assert "detailFocusReturnElement" in script_body
+
+
+
+def test_admin_orders_displays_pending_age_indicators(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[_admin_user()],
+    )
+
+    client = app.test_client()
+
+    script_response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert script_response.status_code == 200
+
+    script = script_response.get_data(
+        as_text=True
+    )
+
+    assert "function getPendingAgePresentation(" in script
+    assert "order.created_at" in script
+    assert 'order.status === "pending"' in script
+    assert 'elapsedMinutes >= 240' in script
+    assert 'elapsedMinutes >= 60' in script
+    assert "admin-orders-pending-age--${pendingAge.tone}" in script
+
+    css_response = client.get(
+        "/static/css/admin-orders.css"
+    )
+
+    assert css_response.status_code == 200
+
+    css = css_response.get_data(
+        as_text=True
+    )
+
+    assert ".admin-orders-pending-age--fresh" in css
+    assert ".admin-orders-pending-age--attention" in css
+    assert ".admin-orders-pending-age--urgent" in css

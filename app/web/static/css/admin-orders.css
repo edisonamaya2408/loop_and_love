@@ -1479,3 +1479,48 @@
     outline: 3px solid var(--admin-rose-deep);
     outline-offset: 3px;
 }
+
+
+
+/* ==================================================
+   PENDING ORDER AGE AND PRIORITY
+================================================== */
+
+.admin-orders-status-group {
+    display: grid;
+    justify-items: start;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.admin-orders-pending-age {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.admin-orders-pending-age--fresh {
+    border-color: var(--admin-border);
+    background: var(--admin-surface-soft);
+    color: var(--admin-text-soft);
+}
+
+.admin-orders-pending-age--attention {
+    border-color: #F0D9A9;
+    background: #FFF1D6;
+    color: #8A641D;
+}
+
+.admin-orders-pending-age--urgent {
+    border-color: #EBCBC7;
+    background: #F6E2E0;
+    color: #95544E;
+}
