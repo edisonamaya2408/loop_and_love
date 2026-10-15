@@ -969,3 +969,38 @@ def test_public_catalog_card_image_modal_remains_available_after_css_adjustment(
         "openCatalogImageModal"
         in javascript
     )
+
+
+
+def test_public_catalog_image_modal_supports_keyboard_focus_management(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    html_response = client.get("/")
+    js_response = client.get("/static/js/app.js")
+    css_response = client.get("/static/css/catalog.css")
+
+    assert html_response.status_code == 200
+    assert js_response.status_code == 200
+    assert css_response.status_code == 200
+
+    html = html_response.get_data(as_text=True)
+    javascript = js_response.get_data(as_text=True)
+    css = css_response.get_data(as_text=True)
+
+    assert 'aria-describedby="catalog-image-modal-hint"' in html
+    assert 'tabindex="-1"' in html
+    assert 'id="catalog-image-modal-hint"' in html
+
+    assert "catalogImageModalState" in javascript
+    assert "getCatalogImageModalFocusableElements" in javascript
+    assert "handleCatalogImageModalKeydown" in javascript
+    assert "event.key === \"Escape\"" in javascript
+    assert "event.key !== \"Tab\"" in javascript
+    assert "returnFocusElement.focus()" in javascript
+    assert "previousBodyOverflow" in javascript
+
+    assert ".catalog-product-card__media:focus-visible" in css
+    assert ".catalog-image-modal__close:focus-visible" in css

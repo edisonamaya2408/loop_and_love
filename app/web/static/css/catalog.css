@@ -1179,3 +1179,14 @@
     }
 
 }
+
+
+/* ==================================================
+   IMAGE VIEWER KEYBOARD ACCESSIBILITY
+================================================== */
+
+.catalog-product-card__media:focus-visible,
+.catalog-image-modal__close:focus-visible {
+    outline: 3px solid var(--color-rose-deep);
+    outline-offset: 3px;
+}

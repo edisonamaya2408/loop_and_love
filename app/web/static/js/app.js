@@ -15,6 +15,11 @@ const catalogState = {
     },
 };
 
+const catalogImageModalState = {
+    returnFocusElement: null,
+    previousBodyOverflow: "",
+};
+
 
 function getCatalogElement(
     id
@@ -31,147 +36,251 @@ function getCatalogElement(
 
 function openCatalogImageModal(
     imageUrl,
-    productName
+    productName,
+    triggerElement = document.activeElement
 ) {
-    const modal =
-        getCatalogElement(
-            "catalog-image-modal"
-        );
+    const modal = getCatalogElement(
+        "catalog-image-modal"
+    );
 
-    const image =
-        getCatalogElement(
-            "catalog-image-modal-image"
-        );
+    const image = getCatalogElement(
+        "catalog-image-modal-image"
+    );
 
-    const title =
-        getCatalogElement(
-            "catalog-image-modal-title"
-        );
+    const title = getCatalogElement(
+        "catalog-image-modal-title"
+    );
 
-    if (
-        !modal ||
-        !image
-    ) {
+    const dialog = modal?.querySelector(
+        ".catalog-image-modal__dialog"
+    );
+
+    if (!modal || !image || !dialog) {
         return;
     }
 
-    image.src =
-        imageUrl;
+    if (modal.hidden) {
+        catalogImageModalState.returnFocusElement = (
+            triggerElement &&
+            triggerElement !== document.body &&
+            typeof triggerElement.focus === "function"
+        )
+            ? triggerElement
+            : null;
 
-    image.alt =
-        productName ||
-        "Producto Loop & Love";
-
-    if (title) {
-        title.textContent =
-            productName ||
-            "Producto";
+        catalogImageModalState.previousBodyOverflow =
+            document.body.style.overflow;
     }
 
-    modal.hidden =
-        false;
+    image.src = imageUrl;
+    image.alt = productName || "Producto Loop & Love";
 
-    modal.setAttribute(
-        "aria-hidden",
-        "false"
+    if (title) {
+        title.textContent = productName || "Producto";
+    }
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+
+    document.body.style.overflow = "hidden";
+
+    const closeButton = getCatalogElement(
+        "catalog-image-modal-close"
     );
 
-    document.body.style.overflow =
-        "hidden";
-
-    getCatalogElement(
-        "catalog-image-modal-close"
-    )?.focus();
+    if (closeButton) {
+        closeButton.focus();
+    } else {
+        dialog.focus();
+    }
 }
 
 
 function closeCatalogImageModal() {
-    const modal =
-        getCatalogElement(
-            "catalog-image-modal"
-        );
+    const modal = getCatalogElement(
+        "catalog-image-modal"
+    );
 
-    const image =
-        getCatalogElement(
-            "catalog-image-modal-image"
-        );
+    const image = getCatalogElement(
+        "catalog-image-modal-image"
+    );
 
     if (!modal) {
         return;
     }
 
-    modal.hidden =
-        true;
+    const wasOpen = !modal.hidden;
 
-    modal.setAttribute(
-        "aria-hidden",
-        "true"
-    );
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
 
     if (image) {
-        image.removeAttribute(
-            "src"
-        );
+        image.removeAttribute("src");
+    }
+
+    if (!wasOpen) {
+        return;
     }
 
     document.body.style.overflow =
-        "";
+        catalogImageModalState.previousBodyOverflow;
+
+    const returnFocusElement =
+        catalogImageModalState.returnFocusElement;
+
+    catalogImageModalState.returnFocusElement = null;
+    catalogImageModalState.previousBodyOverflow = "";
+
+    if (
+        returnFocusElement &&
+        returnFocusElement.isConnected &&
+        !returnFocusElement.disabled &&
+        !returnFocusElement.closest("[hidden]")
+    ) {
+        returnFocusElement.focus();
+        return;
+    }
+
+    getCatalogElement("catalog-filter-toggle")?.focus();
+}
+
+
+function getCatalogImageModalFocusableElements() {
+    const modal = getCatalogElement(
+        "catalog-image-modal"
+    );
+
+    const dialog = modal?.querySelector(
+        ".catalog-image-modal__dialog"
+    );
+
+    if (!dialog) {
+        return [];
+    }
+
+    const selector = [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+
+    return Array.from(
+        dialog.querySelectorAll(selector)
+    ).filter((element) => {
+        if (
+            element.hidden ||
+            element.closest("[hidden]") ||
+            element.getAttribute("aria-hidden") === "true"
+        ) {
+            return false;
+        }
+
+        const style = window.getComputedStyle(element);
+
+        return (
+            style.display !== "none" &&
+            style.visibility !== "hidden"
+        );
+    });
+}
+
+
+function handleCatalogImageModalKeydown(event) {
+    const modal = getCatalogElement(
+        "catalog-image-modal"
+    );
+
+    if (!modal || modal.hidden) {
+        return;
+    }
+
+    if (event.key === "Escape") {
+        event.preventDefault();
+        closeCatalogImageModal();
+        return;
+    }
+
+    if (event.key !== "Tab") {
+        return;
+    }
+
+    const dialog = modal.querySelector(
+        ".catalog-image-modal__dialog"
+    );
+
+    const focusableElements =
+        getCatalogImageModalFocusableElements();
+
+    if (!focusableElements.length) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+    }
+
+    const first = focusableElements[0];
+    const last = focusableElements[
+        focusableElements.length - 1
+    ];
+
+    const activeElement = document.activeElement;
+    const focusIsInsideDialog =
+        dialog?.contains(activeElement);
+
+    if (event.shiftKey) {
+        if (
+            activeElement === first ||
+            !focusIsInsideDialog
+        ) {
+            event.preventDefault();
+            last.focus();
+        }
+
+        return;
+    }
+
+    if (
+        activeElement === last ||
+        !focusIsInsideDialog
+    ) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 
 function setupCatalogImageModal() {
-    const modal =
-        getCatalogElement(
-            "catalog-image-modal"
-        );
+    const modal = getCatalogElement(
+        "catalog-image-modal"
+    );
 
     if (!modal) {
         return;
     }
 
-
-    const closeButton =
-        getCatalogElement(
-            "catalog-image-modal-close"
-        );
-
+    const closeButton = getCatalogElement(
+        "catalog-image-modal-close"
+    );
 
     closeButton?.addEventListener(
         "click",
         closeCatalogImageModal
     );
 
-
     modal.querySelectorAll(
         "[data-catalog-image-modal-close]"
-    ).forEach(
-        (
-            element
-        ) => {
-
-            element.addEventListener(
-                "click",
-                closeCatalogImageModal
-            );
-
-        }
-    );
-
+    ).forEach((element) => {
+        element.addEventListener(
+            "click",
+            closeCatalogImageModal
+        );
+    });
 
     document.addEventListener(
         "keydown",
-        (
-            event
-        ) => {
-
-            if (
-                event.key === "Escape" &&
-                !modal.hidden
-            ) {
-                closeCatalogImageModal();
-            }
-
-        }
+        handleCatalogImageModalKeydown
     );
 }
 
@@ -773,7 +882,7 @@ async function parseCatalogJson(
         return await response.json();
 
     } catch (
-        error
+    error
     ) {
 
         return {
@@ -797,7 +906,7 @@ function getCatalogApiError(
         data &&
         data.error &&
         typeof data.error.message ===
-            "string"
+        "string"
     ) {
         return data.error.message;
     }
@@ -806,7 +915,7 @@ function getCatalogApiError(
     if (
         data &&
         typeof data.message ===
-            "string"
+        "string"
     ) {
         return data.message;
     }
@@ -873,9 +982,8 @@ function renderCatalogProduct(
 
         media.setAttribute(
             "aria-label",
-            `Ver imagen completa de ${
-                product.name ||
-                "Producto"
+            `Ver imagen completa de ${product.name ||
+            "Producto"
             }`
         );
 
@@ -883,12 +991,11 @@ function renderCatalogProduct(
         media.addEventListener(
             "click",
             () => {
-
                 openCatalogImageModal(
                     imageUrl,
-                    product.name
+                    product.name,
+                    media
                 );
-
             }
         );
 
@@ -1569,7 +1676,7 @@ async function refreshCatalog() {
         );
 
     } catch (
-        error
+    error
     ) {
 
         showCatalogError(
@@ -1624,7 +1731,7 @@ async function initializeCatalog() {
         );
 
     } catch (
-        error
+    error
     ) {
 
         showCatalogError(
@@ -1842,7 +1949,7 @@ async function refreshCatalogPage() {
         }
 
     } catch (
-        error
+    error
     ) {
 
         showCatalogError(
