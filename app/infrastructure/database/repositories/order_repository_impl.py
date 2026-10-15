@@ -74,6 +74,15 @@ class SQLAlchemyOrderRepository(OrderRepository):
                         history.new_status
                     ),
                     changed_at=history.changed_at,
+                    changed_by_admin_user_id=(
+                        history.changed_by_admin_user_id
+                    ),
+                    changed_by_name=(
+                        history.changed_by_name
+                    ),
+                    changed_by_email=(
+                        history.changed_by_email
+                    ),
                 )
                 for history in model.status_history
             ]
@@ -186,10 +195,15 @@ class SQLAlchemyOrderRepository(OrderRepository):
             include_status_history=True,
         )
 
+    
     def update_status(
         self,
         order_id: int,
         status: str,
+        *,
+        actor_id: int | None = None,
+        actor_name: str | None = None,
+        actor_email: str | None = None,
     ) -> OrderEntity | None:
 
         model = (
@@ -217,11 +231,12 @@ class SQLAlchemyOrderRepository(OrderRepository):
                 order_id=order_id,
                 previous_status=previous_status,
                 new_status=status,
-                changed_at=(
-                    datetime.now(
-                        timezone.utc
-                    )
+                changed_at=datetime.now(
+                    timezone.utc
                 ),
+                changed_by_admin_user_id=actor_id,
+                changed_by_name=actor_name,
+                changed_by_email=actor_email,
             )
         )
 

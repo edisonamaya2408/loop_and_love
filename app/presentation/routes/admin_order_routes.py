@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    g,
     jsonify,
     request,
 )
@@ -52,6 +53,21 @@ def _order_to_dict(order):
                     history.changed_at.isoformat()
                     if history.changed_at
                     else None
+                ),               
+                "changed_by_admin_user_id": getattr(
+                    history,
+                    "changed_by_admin_user_id",
+                    None,
+                ),
+                "changed_by_name": getattr(
+                    history,
+                    "changed_by_name",
+                    None,
+                ),
+                "changed_by_email": getattr(
+                    history,
+                    "changed_by_email",
+                    None,
                 ),
             }
             for history in (
@@ -192,6 +208,9 @@ def update_admin_order_status(
             .update_admin_order_status(
                 order_id,
                 status,
+                actor_id=g.authenticated_user.get("id"),
+                actor_name=g.authenticated_user.get("name"),
+                actor_email=g.authenticated_user.get("email"),
             )
         )
 

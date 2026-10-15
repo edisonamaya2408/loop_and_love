@@ -1,3 +1,4 @@
+
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -11,3 +12,6 @@ class OrderStatusHistoryEntity:
     previous_status: str | None
     new_status: str
     changed_at: datetime | None
+    changed_by_admin_user_id: int | None = None
+    changed_by_name: str | None = None
+    changed_by_email: str | None = None

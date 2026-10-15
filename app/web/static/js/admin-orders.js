@@ -759,6 +759,43 @@ function renderOrderStatusHistory(
                 entry?.changed_at
             );
 
+
+            const changedByName = (
+                typeof entry?.changed_by_name === "string"
+                && entry.changed_by_name.trim()
+            )
+                ? entry.changed_by_name.trim()
+                : "";
+
+            const changedByEmail = (
+                typeof entry?.changed_by_email === "string"
+                && entry.changed_by_email.trim()
+            )
+                ? entry.changed_by_email.trim()
+                : "";
+
+            let actorAttribution;
+
+            if (changedByName) {
+                actorAttribution = `Responsable: ${changedByName}`;
+
+                if (changedByEmail) {
+                    actorAttribution += ` (${changedByEmail})`;
+                }
+            } else if (previousStatus) {
+                actorAttribution =
+                    "Responsable no registrado (evento histórico)";
+            } else {
+                actorAttribution =
+                    "Actor no registrado en el evento inicial";
+            }
+
+            const actorElement = createTextElement(
+                "span",
+                "admin-orders-status-history__actor",
+                actorAttribution
+            );
+
             if (relativeTime) {
                 const relativeDate = createTextElement(
                     "span",
@@ -775,13 +812,15 @@ function renderOrderStatusHistory(
                     transition,
                     status,
                     date,
-                    relativeDate
+                    relativeDate,
+                    actorElement
                 );
             } else {
                 content.append(
                     transition,
                     status,
-                    date
+                    date,
+                    actorElement
                 );
             }
 

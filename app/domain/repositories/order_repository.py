@@ -22,14 +22,20 @@ class OrderRepository(ABC):
         """Obtiene un pedido por ID."""
         raise NotImplementedError
 
+    
     @abstractmethod
     def update_status(
         self,
         order_id: int,
         status: str,
+        *,
+        actor_id: int | None = None,
+        actor_name: str | None = None,
+        actor_email: str | None = None,
     ) -> OrderEntity | None:
-        """Actualiza el estado de un pedido."""
+        """Actualiza el estado y registra quién realizó el cambio."""
         raise NotImplementedError
+
 
     @abstractmethod
     def get_all_paginated(

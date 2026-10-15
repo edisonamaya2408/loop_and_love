@@ -675,10 +675,14 @@ def test_update_admin_order_status_confirms_pending_order():
     )
 
     repository.update_status = (
-        lambda order_id, status:
+        lambda order_id, status, *, actor_id=None,
+        actor_name=None, actor_email=None:
         SimpleNamespace(
             id=order_id,
             status=status,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            actor_email=actor_email,
         )
     )
 

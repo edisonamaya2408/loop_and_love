@@ -303,3 +303,23 @@ def test_openapi_public_catalog_routes_do_not_require_authentication():
             document["paths"][path].values()
         ):
             assert "security" not in operation
+
+
+def test_openapi_documents_order_status_history_actor():
+    document = _load_openapi()
+
+    schema = document["components"]["schemas"][
+        "AdminOrderStatusHistoryItem"
+    ]
+
+    properties = schema["properties"]
+
+    assert "changed_by_admin_user_id" in properties
+    assert properties["changed_by_admin_user_id"]["nullable"] is True
+
+    assert properties["changed_by_name"]["maxLength"] == 120
+    assert properties["changed_by_name"]["nullable"] is True
+
+    assert properties["changed_by_email"]["format"] == "email"
+    assert properties["changed_by_email"]["maxLength"] == 255
+    assert properties["changed_by_email"]["nullable"] is True

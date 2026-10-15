@@ -203,6 +203,9 @@ class FakeOrderService:
         self,
         order_id,
         status,
+        actor_id=None,
+        actor_name=None,
+        actor_email=None,
     ):
         allowed_statuses = {
             "confirmed",
@@ -247,6 +250,9 @@ class FakeOrderService:
                 changed_at=datetime.now(
                     timezone.utc
                 ),
+                changed_by_admin_user_id=actor_id,
+                changed_by_name=actor_name,
+                changed_by_email=actor_email,
             )
         )
 
@@ -768,6 +774,12 @@ def test_update_admin_order_status_confirms_order(
         is not None
     )
 
+    history_entry = data["data"]["status_history"][-1]
+
+    assert history_entry["changed_by_admin_user_id"] == 1
+    assert history_entry["changed_by_name"] == "Administrador de prueba"
+    assert history_entry["changed_by_email"] == "admin@test.com"
+
 
 def test_update_admin_order_status_cancels_order(
     monkeypatch,
@@ -921,6 +933,9 @@ def test_get_admin_order_returns_status_history(
             "changed_at": (
                 "2026-09-29T20:00:00+00:00"
             ),
+            "changed_by_admin_user_id": None,
+            "changed_by_name": None,
+            "changed_by_email": None,
         }
     ]
 

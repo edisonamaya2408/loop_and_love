@@ -2563,7 +2563,10 @@
           "id",
           "previous_status",
           "new_status",
-          "changed_at"
+          "changed_at",
+          "changed_by_admin_user_id",
+          "changed_by_name",
+          "changed_by_email"
         ],
         "properties": {
           "id": {
@@ -2590,6 +2593,22 @@
           "changed_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "changed_by_admin_user_id": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "changed_by_name": {
+            "type": "string",
+            "maxLength": 120,
+            "nullable": true
+          },
+          "changed_by_email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "nullable": true
           }
         }
       },

@@ -149,10 +149,15 @@ class OrderService:
             order_id
         )
 
+    
     def update_admin_order_status(
         self,
         order_id: int,
         status: str,
+        *,
+        actor_id: int | None = None,
+        actor_name: str | None = None,
+        actor_email: str | None = None,
     ) -> OrderEntity | None:
 
         self._validate_id(
@@ -192,10 +197,43 @@ class OrderService:
                 "El estado solicitado no es válido."
             )
 
+        if (
+            not isinstance(actor_id, int)
+            or isinstance(actor_id, bool)
+            or actor_id <= 0
+        ):
+            clean_actor_id = None
+            clean_actor_name = None
+            clean_actor_email = None
+        else:
+            clean_actor_id = actor_id
+
+            clean_actor_name = (
+                actor_name.strip()[:120]
+                if (
+                    isinstance(actor_name, str)
+                    and actor_name.strip()
+                )
+                else None
+            )
+
+            clean_actor_email = (
+                actor_email.strip()[:255]
+                if (
+                    isinstance(actor_email, str)
+                    and actor_email.strip()
+                )
+                else None
+            )
+
         return self.repository.update_status(
             order_id,
             clean_status,
+            actor_id=clean_actor_id,
+            actor_name=clean_actor_name,
+            actor_email=clean_actor_email,
         )
+
 
     def list_admin_orders(
         self,

@@ -13,6 +13,9 @@ from app.infrastructure.database.models.admin_user_model import (
 from app.infrastructure.database.models.admin_audit_log_model import (
     AdminAuditLog,
 )
+from app.infrastructure.database.models.order_status_history_model import (
+    OrderStatusHistory,
+)
 from app.infrastructure.database.models.category_model import (
     Category,
 )
@@ -762,6 +765,7 @@ def test_admin_order_status_audit_records_previous_and_new_status(
     auth_token,
     persisted_product,
     integration_session,
+    persisted_admin,
 ):
     order_service = OrderService(
         repository=SQLAlchemyOrderRepository(
@@ -795,12 +799,34 @@ def test_admin_order_status_audit_records_previous_and_new_status(
             headers=_auth_headers(auth_token),
         )
 
+        
         assert response.status_code == 200
 
         payload = response.get_json()
 
+        assert payload is not None
         assert payload["success"] is True
         assert payload["data"]["status"] == "confirmed"
+
+        status_entry = next(
+            entry
+            for entry in payload["data"]["status_history"]
+            if entry["new_status"] == "confirmed"
+        )
+
+        assert (
+            status_entry["changed_by_admin_user_id"]
+            == persisted_admin.id
+        )
+        assert (
+            status_entry["changed_by_name"]
+            == persisted_admin.name
+        )
+        assert (
+            status_entry["changed_by_email"]
+            == persisted_admin.email
+        )
+
 
         audit_event = (
             integration_session.query(AdminAuditLog)

@@ -72,6 +72,30 @@ class OrderStatusHistory(db.Model):
         ),
     )
 
+    
+    changed_by_admin_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "admin_users.id",
+            name=(
+                "fk_order_status_history_changed_by_admin_user_id_admin_users"
+            ),
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+
+    changed_by_name = db.Column(
+        db.Unicode(120),
+        nullable=True,
+    )
+
+    changed_by_email = db.Column(
+        db.Unicode(255),
+        nullable=True,
+    )
+
+
     order = db.relationship(
         "Order",
         back_populates="status_history",
