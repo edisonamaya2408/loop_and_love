@@ -1027,3 +1027,43 @@ def test_public_order_checkout_preserves_idempotency_on_retry(
     assert "clearOrderIdempotencyAttempt();" in script
     assert "IDEMPOTENCY_KEY_REUSED" in script
     assert '".catalog-product-card__add"' in script
+
+
+def test_public_order_supports_safe_retry_and_result_summary(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    script_response = client.get(
+        "/static/js/order.js"
+    )
+
+    css_response = client.get(
+        "/static/css/order.css"
+    )
+
+    assert script_response.status_code == 200
+    assert css_response.status_code == 200
+
+    script = script_response.get_data(as_text=True)
+    css = css_response.get_data(as_text=True)
+
+    assert "pendingRetry: null" in script
+    assert "blockedAttempt: null" in script
+    assert "function readStoredOrderAttempt()" in script
+    assert "function retryPendingOrder()" in script
+    assert "function showUncertainOrderResult(" in script
+    assert "function performOrderSubmission(" in script
+    assert "Reintentar el mismo pedido" in script
+    assert "orderState.pendingRetry" in script
+    assert "IDEMPOTENCY_KEY_REUSED" in script
+
+    assert "catalog-order-feedback__summary" in script
+    assert "Resumen del pedido" in script
+    assert "No pudimos confirmar la respuesta del servidor" in script
+
+    assert ".catalog-order-feedback--warning" in css
+    assert ".catalog-order-feedback--pending" in css
+    assert ".catalog-order-feedback__summary" in css
+    assert ".catalog-order-feedback__action" in css

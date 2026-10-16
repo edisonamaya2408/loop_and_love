@@ -13,9 +13,10 @@ const ORDER_IDEMPOTENCY_KEY_PATTERN =
 
 
 const orderState = {
-    submitting:
-        false,
+    submitting: false,
     lastAttempt: null,
+    pendingRetry: null,
+    blockedAttempt: null,
 };
 
 
@@ -201,38 +202,71 @@ function createOrderIdempotencyKey() {
 }
 
 
-function getOrderIdempotencyKey(payload) {
-    const fingerprint = fingerprintOrderPayload(payload);
-    let previousAttempt = null;
+
+function readStoredOrderAttempt() {
+    let rawValue;
 
     try {
-        const stored = window.localStorage.getItem(
+        rawValue = window.localStorage.getItem(
             ORDER_ATTEMPT_STORAGE_KEY
         );
+    } catch (error) {
+        return orderState.lastAttempt;
+    }
 
-        if (stored) {
-            previousAttempt = JSON.parse(stored);
+    if (rawValue === null) {
+        return orderState.lastAttempt;
+    }
+
+    try {
+        const attempt = JSON.parse(rawValue);
+
+        if (
+            attempt &&
+            typeof attempt === "object" &&
+            !Array.isArray(attempt)
+        ) {
+            return attempt;
         }
     } catch (error) {
-        // Si localStorage no está disponible, usamos la memoria.
+        // Un registro ilegible no debe provocar una nueva clave
+        // automática: podría corresponder a un pedido ya guardado.
     }
 
+    return {
+        invalid: true,
+    };
+}
+
+
+function getOrderIdempotencyKey(payload) {
     if (
-        !previousAttempt ||
-        previousAttempt.fingerprint !== fingerprint
+        orderState.pendingRetry ||
+        orderState.blockedAttempt
     ) {
-        previousAttempt = orderState.lastAttempt;
+        return null;
     }
 
-    if (
-        previousAttempt &&
-        previousAttempt.fingerprint === fingerprint &&
-        ORDER_IDEMPOTENCY_KEY_PATTERN.test(
-            previousAttempt.key || ""
-        )
-    ) {
-        orderState.lastAttempt = previousAttempt;
-        return previousAttempt.key;
+    const fingerprint = fingerprintOrderPayload(payload);
+    const previousAttempt = readStoredOrderAttempt();
+
+    if (previousAttempt) {
+        if (
+            previousAttempt.fingerprint === fingerprint &&
+            ORDER_IDEMPOTENCY_KEY_PATTERN.test(
+                previousAttempt.key || ""
+            )
+        ) {
+            orderState.lastAttempt = previousAttempt;
+
+            return previousAttempt.key;
+        }
+
+        // No sustituir una clave si la solicitud anterior
+        // todavía no tiene un resultado confirmado.
+        orderState.blockedAttempt = previousAttempt;
+
+        return null;
     }
 
     const attempt = {
@@ -248,8 +282,8 @@ function getOrderIdempotencyKey(payload) {
             JSON.stringify(attempt)
         );
     } catch (error) {
-        // El reintento seguirá siendo idempotente mientras esta
-        // página conserve el estado en memoria.
+        // Se conserva en memoria para permitir reintentos
+        // mientras esta página continúe abierta.
     }
 
     return attempt.key;
@@ -258,15 +292,18 @@ function getOrderIdempotencyKey(payload) {
 
 function clearOrderIdempotencyAttempt() {
     orderState.lastAttempt = null;
+    orderState.pendingRetry = null;
+    orderState.blockedAttempt = null;
 
     try {
         window.localStorage.removeItem(
             ORDER_ATTEMPT_STORAGE_KEY
         );
     } catch (error) {
-        // No interrumpimos el flujo si no se puede limpiar el storage.
+        // No interrumpimos el flujo por un fallo de almacenamiento.
     }
 }
+
 
 
 /* ==================================================
@@ -404,150 +441,152 @@ function clearOrderFeedback() {
 }
 
 
+
 function showOrderFeedback(
     message,
     type = "error",
-    whatsappUrl = ""
+    whatsappUrl = "",
+    options = {}
 ) {
-    const feedback =
-        getOrderElement(
-            "order-feedback"
-        );
-
+    const feedback = getOrderElement("order-feedback");
 
     if (!feedback) {
         return;
     }
 
-
     feedback.replaceChildren();
-
-
-    feedback.hidden =
-        false;
-
-
+    feedback.hidden = false;
     feedback.className =
         `catalog-order-feedback catalog-order-feedback--${type}`;
 
+    const text = document.createElement("p");
+    text.className = "catalog-order-feedback__text";
+    text.textContent = message;
 
-    const text =
-        document.createElement(
-            "p"
-        );
+    feedback.append(text);
 
+    if (options.summary) {
+        const summary = options.summary;
 
-    text.className =
-        "catalog-order-feedback__text";
+        const summaryElement = document.createElement("div");
+        summaryElement.className =
+            "catalog-order-feedback__summary";
 
+        const heading = document.createElement("h3");
+        heading.textContent = "Resumen del pedido";
 
-    text.textContent =
-        message;
+        const list = document.createElement("dl");
+        list.className = "catalog-order-feedback__summary-list";
 
+        const rows = [
+            ["Número de pedido", `#${summary.orderId}`],
+            ["Unidades", String(summary.itemCount)],
+            ["Total", formatOrderPrice(summary.total)],
+        ];
 
-    feedback.append(
-        text
-    );
+        rows.forEach(([label, value]) => {
+            const term = document.createElement("dt");
+            term.textContent = label;
 
+            const description = document.createElement("dd");
+            description.textContent = value;
+
+            list.append(term, description);
+        });
+
+        summaryElement.append(heading, list);
+        feedback.append(summaryElement);
+    }
+
+    if (whatsappUrl) {
+        const link = document.createElement("a");
+
+        link.className = "catalog-order-feedback__link";
+        link.href = whatsappUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Abrir WhatsApp";
+
+        feedback.append(link);
+    }
 
     if (
-        whatsappUrl
+        typeof options.actionLabel === "string" &&
+        typeof options.onAction === "function"
     ) {
-        const link =
-            document.createElement(
-                "a"
-            );
+        const action = document.createElement("button");
 
+        action.type = "button";
+        action.className =
+            "catalog-order-feedback__action";
+        action.textContent = options.actionLabel;
 
-        link.className =
-            "catalog-order-feedback__link";
-
-
-        link.href =
-            whatsappUrl;
-
-
-        link.target =
-            "_blank";
-
-
-        link.rel =
-            "noopener noreferrer";
-
-
-        link.textContent =
-            "Abrir WhatsApp";
-
-
-        feedback.append(
-            link
+        action.addEventListener(
+            "click",
+            options.onAction
         );
+
+        feedback.append(action);
     }
 }
+
 
 
 /* ==================================================
    SUBMITTING STATE
 ================================================== */
 
-function setOrderSubmitting(
-    submitting
-) {
-    orderState.submitting =
-        submitting;
 
+function setOrderSubmitting(submitting) {
+    orderState.submitting = submitting;
 
-    const button =
-        getOrderElement(
-            "order-submit"
-        );
+    const retryPending = Boolean(orderState.pendingRetry);
+    const attemptBlocked = Boolean(orderState.blockedAttempt);
 
+    const locked =
+        submitting || retryPending || attemptBlocked;
 
-    const clearButton =
-        getOrderElement(
-            "cart-clear"
-        );
-
+    const button = getOrderElement("order-submit");
+    const clearButton = getOrderElement("cart-clear");
+    const form = getOrderElement("catalog-order-form");
 
     if (button) {
-        button.disabled =
-            submitting;
+        button.disabled = locked;
 
-
-        button.textContent =
-            submitting
-                ? "Creando pedido..."
-                : "Enviar pedido por WhatsApp";
+        if (submitting) {
+            button.textContent = "Registrando pedido...";
+        } else if (retryPending) {
+            button.textContent = "Pedido pendiente de confirmar";
+        } else if (attemptBlocked) {
+            button.textContent = "Verifica el intento anterior";
+        } else {
+            button.textContent = "Enviar pedido por WhatsApp";
+        }
     }
-
 
     if (clearButton) {
-        clearButton.disabled =
-            submitting;
+        clearButton.disabled = locked;
     }
 
+    form?.querySelectorAll(
+        "input, select, textarea"
+    ).forEach((control) => {
+        control.disabled = locked;
+    });
 
-    const quantityButtons =
-        document.querySelectorAll(
-            "#cart-items [data-cart-action]"
-        );
-
-
-    quantityButtons.forEach(
-        (
-            quantityButton
-        ) => {
-            quantityButton.disabled =
-                submitting;
-        }
-    );
+    document.querySelectorAll(
+        "#cart-items [data-cart-action]"
+    ).forEach((button) => {
+        button.disabled = locked;
+    });
 
     document.querySelectorAll(
         ".catalog-product-card__add"
     ).forEach((button) => {
-        button.disabled = submitting;
+        button.disabled = locked;
     });
 }
+
 
 
 /* ==================================================
@@ -729,40 +768,382 @@ function resetOrderForm() {
 }
 
 
-/* ==================================================
-   SUBMIT
-================================================== */
-
-async function submitCatalogOrder(
-    event
-) {
-    event.preventDefault();
-
-
+function closeTemporaryWhatsAppWindow(whatsappWindow) {
     if (
-        orderState.submitting
+        whatsappWindow &&
+        !whatsappWindow.closed
+    ) {
+        try {
+            whatsappWindow.close();
+        } catch (error) {
+            // No interrumpir la recuperación del pedido.
+        }
+    }
+}
+
+
+function discardUnresolvedOrderAttempt() {
+    const confirmed = window.confirm(
+        "Esta acción elimina la clave guardada en este navegador, " +
+        "pero no cancela ni verifica el pedido en el servidor. " +
+        "Si el pedido anterior sí se registró, podrías crear un " +
+        "duplicado. ¿Has comprobado que no existe?"
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    clearOrderIdempotencyAttempt();
+    setOrderSubmitting(false);
+
+    showOrderFeedback(
+        "Se descartó la clave guardada localmente. " +
+        "Revisa el carrito y los datos antes de iniciar otro pedido.",
+        "info"
+    );
+}
+
+
+function showUnresolvedAttemptFeedback(message) {
+    if (!orderState.blockedAttempt) {
+        orderState.blockedAttempt =
+            readStoredOrderAttempt() || {
+                invalid: true,
+            };
+    }
+
+    setOrderSubmitting(false);
+
+    showOrderFeedback(
+        message ||
+            "Hay un intento anterior cuyo resultado no se pudo " +
+            "confirmar. Para evitar duplicados, no enviaremos " +
+            "automáticamente un pedido con una clave diferente. " +
+            "Comprueba si el pedido original quedó registrado.",
+        "warning",
+        "",
+        {
+            actionLabel:
+                "He comprobado que no existe; iniciar otro intento",
+            onAction:
+                discardUnresolvedOrderAttempt,
+        }
+    );
+}
+
+
+function showUncertainOrderResult(
+    payload,
+    idempotencyKey,
+    whatsappWindow
+) {
+    closeTemporaryWhatsAppWindow(whatsappWindow);
+
+    orderState.pendingRetry = {
+        payload: JSON.parse(JSON.stringify(payload)),
+        idempotencyKey,
+    };
+
+    orderState.lastAttempt = {
+        key: idempotencyKey,
+        fingerprint: fingerprintOrderPayload(payload),
+    };
+
+    setOrderSubmitting(false);
+
+    showOrderFeedback(
+        "No pudimos confirmar la respuesta del servidor. " +
+        "El pedido podría haberse registrado. Conservamos los datos " +
+        "de este intento para que puedas reintentarlo sin crear " +
+        "intencionalmente una solicitud nueva. No cambies el carrito " +
+        "ni los datos mientras lo resolvemos.",
+        "warning",
+        "",
+        {
+            actionLabel: "Reintentar el mismo pedido",
+            onAction: retryPendingOrder,
+        }
+    );
+}
+
+
+function retryPendingOrder() {
+    if (
+        orderState.submitting ||
+        !orderState.pendingRetry
     ) {
         return;
     }
 
+    const attempt = orderState.pendingRetry;
+    const whatsappWindow = openWhatsAppWindow();
+
+    void performOrderSubmission(
+        attempt.payload,
+        attempt.idempotencyKey,
+        whatsappWindow
+    );
+}
+
+
+async function performOrderSubmission(
+    payload,
+    idempotencyKey,
+    whatsappWindow
+) {
+    setOrderSubmitting(true);
+
+    showOrderFeedback(
+        "Estamos intentando registrar tu pedido...",
+        "pending"
+    );
+
+    let confirmedOrder = null;
+
+    try {
+        const response = await fetch(
+            ORDER_API_URL,
+            {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": idempotencyKey,
+                },
+                body: JSON.stringify(payload),
+            }
+        );
+
+        const data = await parseOrderResponse(response);
+
+        if (
+            response.status === 409 &&
+            data?.error?.code === "IDEMPOTENCY_KEY_REUSED"
+        ) {
+            orderState.blockedAttempt = {
+                key: idempotencyKey,
+                fingerprint: fingerprintOrderPayload(payload),
+            };
+
+            showUnresolvedAttemptFeedback(
+                "El servidor indicó que esta clave se utilizó " +
+                "con datos diferentes. No enviaremos otra solicitud " +
+                "automáticamente. Verifica si el pedido original " +
+                "ya existe antes de iniciar uno nuevo."
+            );
+
+            closeTemporaryWhatsAppWindow(whatsappWindow);
+            return;
+        }
+
+        if (
+            !response.ok ||
+            data?.success !== true ||
+            !data?.data ||
+            data.data.id === undefined ||
+            data.data.id === null
+        ) {
+            const uncertain =
+                response.status >= 500 || response.ok;
+
+            const message = getOrderApiError(
+                data,
+                "No fue posible registrar el pedido."
+            );
+
+            closeTemporaryWhatsAppWindow(whatsappWindow);
+
+            if (uncertain) {
+                showUncertainOrderResult(
+                    payload,
+                    idempotencyKey,
+                    null
+                );
+            } else {
+                clearOrderIdempotencyAttempt();
+
+                showOrderFeedback(
+                    message,
+                    "error"
+                );
+            }
+
+            return;
+        }
+
+        confirmedOrder = data.data;
+
+        const whatsappNumber = getWhatsAppNumber();
+
+        const whatsappUrl = buildWhatsAppUrl(
+            whatsappNumber,
+            confirmedOrder
+        );
+
+        const itemCount = (
+            Array.isArray(confirmedOrder.items)
+                ? confirmedOrder.items
+                : []
+        ).reduce(
+            (sum, item) => (
+                sum + Math.max(0, Number(item.quantity) || 0)
+            ),
+            0
+        );
+
+        const summary = {
+            orderId: confirmedOrder.id,
+            total: confirmedOrder.total,
+            itemCount,
+        };
+
+        /*
+         * El servidor confirmó la creación. Ahora limpiamos
+         * los datos locales y después eliminamos la clave.
+         */
+        try {
+            if (typeof clearCart === "function") {
+                clearCart();
+            } else {
+                window.localStorage.removeItem(
+                    "loop_and_love.b2b_cart"
+                );
+            }
+        } catch (cleanupError) {
+            console.error(
+                "No se pudo limpiar el carrito después de confirmar el pedido."
+            );
+        }
+
+        resetOrderForm();
+        clearOrderIdempotencyAttempt();
+
+        const successMessage =
+            `Pedido #${confirmedOrder.id} registrado correctamente. ` +
+            "Revisa el resumen y envía el mensaje desde WhatsApp " +
+            "para completar el contacto.";
+
+        if (whatsappWindow) {
+            showOrderFeedback(
+                successMessage,
+                "success",
+                "",
+                { summary }
+            );
+
+            try {
+                whatsappWindow.location.replace(whatsappUrl);
+            } catch (navigationError) {
+                showOrderFeedback(
+                    successMessage,
+                    "success",
+                    whatsappUrl,
+                    { summary }
+                );
+            }
+        } else {
+            showOrderFeedback(
+                successMessage,
+                "success",
+                whatsappUrl,
+                { summary }
+            );
+        }
+
+    } catch (error) {
+        closeTemporaryWhatsAppWindow(whatsappWindow);
+
+        if (confirmedOrder) {
+            /*
+             * La respuesta confirmó el pedido. Un problema posterior
+             * al crear el pedido no debe presentarse como un fallo
+             * de creación.
+             */
+            let whatsappUrl = "";
+
+            try {
+                whatsappUrl = buildWhatsAppUrl(
+                    getWhatsAppNumber(),
+                    confirmedOrder
+                );
+            } catch (urlError) {
+                // El pedido permanece confirmado.
+            }
+
+            showOrderFeedback(
+                `El pedido #${confirmedOrder.id} está registrado, ` +
+                "pero no pudimos preparar automáticamente WhatsApp. " +
+                "Puedes intentar abrir el enlace.",
+                "success",
+                whatsappUrl,
+                {
+                    summary: {
+                        orderId: confirmedOrder.id,
+                        total: confirmedOrder.total,
+                        itemCount: (
+                            Array.isArray(confirmedOrder.items)
+                                ? confirmedOrder.items
+                                : []
+                        ).reduce(
+                            (sum, item) => (
+                                sum + Math.max(
+                                    0,
+                                    Number(item.quantity) || 0
+                                )
+                            ),
+                            0
+                        ),
+                    },
+                }
+            );
+
+        } else {
+            /*
+             * Un error de red puede ocurrir después de que el servidor
+             * guarde el pedido. Conservamos la misma clave para reintentar.
+             */
+            showUncertainOrderResult(
+                payload,
+                idempotencyKey,
+                null
+            );
+        }
+
+    } finally {
+        setOrderSubmitting(false);
+    }
+}
+
+
+/* ==================================================
+   SUBMIT
+================================================== */
+
+async function submitCatalogOrder(event) {
+    event.preventDefault();
+
+    if (
+        orderState.submitting ||
+        orderState.pendingRetry
+    ) {
+        return;
+    }
+
+    if (orderState.blockedAttempt) {
+        showUnresolvedAttemptFeedback();
+        return;
+    }
 
     clearOrderFeedback();
 
-
-    const form =
-        getOrderElement(
-            "catalog-order-form"
-        );
-
+    const form = getOrderElement("catalog-order-form");
 
     if (!form) {
         return;
     }
 
-
-    const items =
-        getOrderCartItems();
-
+    const items = getOrderCartItems();
 
     if (!items.length) {
         showOrderFeedback(
@@ -772,77 +1153,36 @@ async function submitCatalogOrder(
         return;
     }
 
-
-    if (
-        !form.reportValidity()
-    ) {
+    if (!form.reportValidity()) {
         return;
     }
 
+    const whatsappNumber = getWhatsAppNumber();
 
-    const whatsappNumber =
-        getWhatsAppNumber();
-
-
-    if (
-        !isValidWhatsAppNumber(
-            whatsappNumber
-        )
-    ) {
+    if (!isValidWhatsAppNumber(whatsappNumber)) {
         showOrderFeedback(
-            "El número de WhatsApp no está configurado correctamente. Intenta nuevamente más tarde."
+            "El número de WhatsApp no está configurado correctamente. " +
+            "Intenta nuevamente más tarde."
         );
 
         return;
     }
 
-
-    /*
-     * Abrimos la ventana antes del fetch.
-     *
-     * Esto es importante porque después de await fetch()
-     * el navegador puede considerar la apertura un popup
-     * no iniciado por el usuario.
-     */
-    const whatsappWindow =
-        openWhatsAppWindow();
-
-
-    setOrderSubmitting(
-        true
-    );
-
-
     const payload = {
         name:
-            getOrderElement(
-                "order-customer-name"
-            )?.value ||
-            "",
+            getOrderElement("order-customer-name")?.value || "",
 
         phone:
-            getOrderElement(
-                "order-customer-phone"
-            )?.value ||
-            "",
+            getOrderElement("order-customer-phone")?.value || "",
 
         city:
-            getOrderElement(
-                "order-customer-city"
-            )?.value ||
-            "",
+            getOrderElement("order-customer-city")?.value || "",
 
         address:
-            getOrderElement(
-                "order-customer-address"
-            )?.value ||
-            "",
+            getOrderElement("order-customer-address")?.value || "",
 
         observations:
-            getOrderElement(
-                "order-customer-observations"
-            )?.value ||
-            null,
+            getOrderElement("order-customer-observations")?.value || null,
 
         items,
     };
@@ -850,170 +1190,24 @@ async function submitCatalogOrder(
     const idempotencyKey =
         getOrderIdempotencyKey(payload);
 
-
-    try {
-        const response =
-            await fetch(
-                ORDER_API_URL,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        Accept:
-                            "application/json",
-
-                        "Content-Type":
-                            "application/json",
-                        "Idempotency-Key": idempotencyKey,
-                    },
-
-                    body:
-                        JSON.stringify(
-                            payload
-                        ),
-                }
-            );
-
-
-        const data =
-            await parseOrderResponse(
-                response
-            );
-
-        if (
-            response.status === 409 &&
-            data?.error?.code === "IDEMPOTENCY_KEY_REUSED"
-        ) {
-            clearOrderIdempotencyAttempt();
-        }
-
-        if (
-            !response.ok ||
-            data?.success !== true ||
-            !data?.data
-        ) {
-            throw new Error(
-                getOrderApiError(
-                    data,
-                    "No fue posible registrar el pedido."
-                )
-            );
-        }
-
-
-        const order =
-            data.data;
-
-
-        const whatsappUrl =
-            buildWhatsAppUrl(
-                whatsappNumber,
-                order
-            );
-
-        clearOrderIdempotencyAttempt();
-        /*
-         * El pedido ya está confirmado y almacenado.
-         *
-         * El carrito se limpia para evitar que el cliente
-         * pueda reenviar accidentalmente el mismo pedido.
-         */
-        if (
-            typeof clearCart ===
-            "function"
-        ) {
-            clearCart();
-
-        } else {
-            window.localStorage.removeItem(
-                "loop_and_love.b2b_cart"
-            );
-        }
-
-
-        resetOrderForm();
-
-
-        /*
-         * order-feedback está fuera de #cart-list.
-         * Por eso sigue visible aunque clearCart() haya
-         * ocultado el carrito.
-         */
-        if (
-            whatsappWindow
-        ) {
-            showOrderFeedback(
-                `Pedido #${order.id} registrado correctamente. WhatsApp está listo para enviar la solicitud.`,
-                "success"
-            );
-
-            try {
-                whatsappWindow.location.replace(
-                    whatsappUrl
-                );
-
-            } catch (
-            error
-            ) {
-                /*
-                 * Si la navegación de la ventana falla,
-                 * ofrecemos el enlace manual.
-                 */
-                showOrderFeedback(
-                    `Pedido #${order.id} registrado correctamente. Abre WhatsApp para enviar la solicitud.`,
-                    "success",
-                    whatsappUrl
-                );
-            }
-
-        } else {
-            /*
-             * El navegador bloqueó el popup.
-             * El pedido sigue siendo válido y el cliente
-             * puede abrir WhatsApp mediante el enlace.
-             */
-            showOrderFeedback(
-                `Pedido #${order.id} registrado correctamente. El navegador bloqueó la ventana de WhatsApp.`,
-                "success",
-                whatsappUrl
-            );
-        }
-
-    } catch (
-    error
-    ) {
-
-        if (
-            whatsappWindow &&
-            !whatsappWindow.closed
-        ) {
-            try {
-                whatsappWindow.close();
-
-            } catch (
-            closeError
-            ) {
-                /*
-                 * No interrumpimos el tratamiento del error
-                 * si el navegador no permite cerrar la ventana.
-                 */
-            }
-        }
-
-
-        showOrderFeedback(
-            error instanceof Error
-                ? error.message
-                : "No fue posible registrar el pedido."
-        );
-
-    } finally {
-        setOrderSubmitting(
-            false
-        );
+    if (!idempotencyKey) {
+        showUnresolvedAttemptFeedback();
+        return;
     }
+
+    /*
+     * Abrimos WhatsApp desde el gesto original del cliente
+     * para evitar que el navegador bloquee la ventana.
+     */
+    const whatsappWindow = openWhatsAppWindow();
+
+    await performOrderSubmission(
+        payload,
+        idempotencyKey,
+        whatsappWindow
+    );
 }
+
 
 
 /* ==================================================
