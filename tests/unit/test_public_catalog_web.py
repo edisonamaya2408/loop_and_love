@@ -1004,3 +1004,26 @@ def test_public_catalog_image_modal_supports_keyboard_focus_management(
 
     assert ".catalog-product-card__media:focus-visible" in css
     assert ".catalog-image-modal__close:focus-visible" in css
+
+
+def test_public_order_checkout_preserves_idempotency_on_retry(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    response = client.get("/static/js/order.js")
+
+    assert response.status_code == 200
+
+    script = response.get_data(as_text=True)
+
+    assert 'const ORDER_ATTEMPT_STORAGE_KEY' in script
+    assert "function fingerprintOrderPayload(" in script
+    assert "function createOrderIdempotencyKey(" in script
+    assert "function getOrderIdempotencyKey(" in script
+    assert "function clearOrderIdempotencyAttempt(" in script
+    assert '"Idempotency-Key": idempotencyKey' in script
+    assert "clearOrderIdempotencyAttempt();" in script
+    assert "IDEMPOTENCY_KEY_REUSED" in script
+    assert '".catalog-product-card__add"' in script

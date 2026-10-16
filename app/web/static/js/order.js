@@ -5,9 +5,17 @@ const ORDER_API_URL =
     "/api/orders";
 
 
+const ORDER_ATTEMPT_STORAGE_KEY =
+    "loop_and_love.b2b_order_attempt";
+
+const ORDER_IDEMPOTENCY_KEY_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+
 const orderState = {
     submitting:
         false,
+    lastAttempt: null,
 };
 
 
@@ -124,6 +132,140 @@ function getOrderCartItems() {
                     ),
             })
         );
+}
+
+
+function fingerprintOrderPayload(payload) {
+    const source = JSON.stringify(payload);
+
+    let hashOne = 2166136261;
+    let hashTwo = 2246822519;
+
+    for (let index = 0; index < source.length; index += 1) {
+        const code = source.charCodeAt(index);
+
+        hashOne = Math.imul(
+            hashOne ^ code,
+            16777619
+        );
+
+        hashTwo = Math.imul(
+            hashTwo ^ code,
+            3266489917
+        );
+    }
+
+    return (
+        `v1-${(hashOne >>> 0).toString(16)}-` +
+        `${(hashTwo >>> 0).toString(16)}`
+    );
+}
+
+
+function createOrderIdempotencyKey() {
+    if (
+        window.crypto &&
+        typeof window.crypto.randomUUID === "function"
+    ) {
+        return window.crypto.randomUUID();
+    }
+
+    const bytes = new Uint8Array(16);
+
+    if (
+        window.crypto &&
+        typeof window.crypto.getRandomValues === "function"
+    ) {
+        window.crypto.getRandomValues(bytes);
+    } else {
+        for (let index = 0; index < bytes.length; index += 1) {
+            bytes[index] = Math.floor(Math.random() * 256);
+        }
+    }
+
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const hex = Array.from(
+        bytes,
+        (value) => value.toString(16).padStart(2, "0")
+    ).join("");
+
+    return [
+        hex.slice(0, 8),
+        hex.slice(8, 12),
+        hex.slice(12, 16),
+        hex.slice(16, 20),
+        hex.slice(20, 32),
+    ].join("-");
+}
+
+
+function getOrderIdempotencyKey(payload) {
+    const fingerprint = fingerprintOrderPayload(payload);
+    let previousAttempt = null;
+
+    try {
+        const stored = window.localStorage.getItem(
+            ORDER_ATTEMPT_STORAGE_KEY
+        );
+
+        if (stored) {
+            previousAttempt = JSON.parse(stored);
+        }
+    } catch (error) {
+        // Si localStorage no está disponible, usamos la memoria.
+    }
+
+    if (
+        !previousAttempt ||
+        previousAttempt.fingerprint !== fingerprint
+    ) {
+        previousAttempt = orderState.lastAttempt;
+    }
+
+    if (
+        previousAttempt &&
+        previousAttempt.fingerprint === fingerprint &&
+        ORDER_IDEMPOTENCY_KEY_PATTERN.test(
+            previousAttempt.key || ""
+        )
+    ) {
+        orderState.lastAttempt = previousAttempt;
+        return previousAttempt.key;
+    }
+
+    const attempt = {
+        key: createOrderIdempotencyKey(),
+        fingerprint,
+    };
+
+    orderState.lastAttempt = attempt;
+
+    try {
+        window.localStorage.setItem(
+            ORDER_ATTEMPT_STORAGE_KEY,
+            JSON.stringify(attempt)
+        );
+    } catch (error) {
+        // El reintento seguirá siendo idempotente mientras esta
+        // página conserve el estado en memoria.
+    }
+
+    return attempt.key;
+}
+
+
+function clearOrderIdempotencyAttempt() {
+    orderState.lastAttempt = null;
+
+    try {
+        window.localStorage.removeItem(
+            ORDER_ATTEMPT_STORAGE_KEY
+        );
+    } catch (error) {
+        // No interrumpimos el flujo si no se puede limpiar el storage.
+    }
 }
 
 
@@ -399,6 +541,12 @@ function setOrderSubmitting(
                 submitting;
         }
     );
+
+    document.querySelectorAll(
+        ".catalog-product-card__add"
+    ).forEach((button) => {
+        button.disabled = submitting;
+    });
 }
 
 
@@ -699,6 +847,9 @@ async function submitCatalogOrder(
         items,
     };
 
+    const idempotencyKey =
+        getOrderIdempotencyKey(payload);
+
 
     try {
         const response =
@@ -714,6 +865,7 @@ async function submitCatalogOrder(
 
                         "Content-Type":
                             "application/json",
+                        "Idempotency-Key": idempotencyKey,
                     },
 
                     body:
@@ -729,6 +881,12 @@ async function submitCatalogOrder(
                 response
             );
 
+        if (
+            response.status === 409 &&
+            data?.error?.code === "IDEMPOTENCY_KEY_REUSED"
+        ) {
+            clearOrderIdempotencyAttempt();
+        }
 
         if (
             !response.ok ||
@@ -754,7 +912,7 @@ async function submitCatalogOrder(
                 order
             );
 
-
+        clearOrderIdempotencyAttempt();
         /*
          * El pedido ya está confirmado y almacenado.
          *

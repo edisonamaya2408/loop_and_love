@@ -48,3 +48,10 @@ class OrderEntity:
     ] = field(
         default_factory=list
     )
+    idempotency_key: str | None = None
+    request_fingerprint: str | None = None
+    idempotency_replayed: bool = field(
+        default=False,
+        repr=False,
+        compare=False,
+    )

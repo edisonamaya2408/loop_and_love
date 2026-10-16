@@ -323,3 +323,23 @@ def test_openapi_documents_order_status_history_actor():
     assert properties["changed_by_email"]["format"] == "email"
     assert properties["changed_by_email"]["maxLength"] == 255
     assert properties["changed_by_email"]["nullable"] is True
+
+
+def test_openapi_documents_order_idempotency():
+    document = _load_openapi()
+    operation = document["paths"]["/api/orders"]["post"]
+
+    key_parameter = next(
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["name"] == "Idempotency-Key"
+    )
+
+    assert key_parameter["in"] == "header"
+    assert key_parameter["required"] is False
+    assert key_parameter["schema"]["format"] == "uuid"
+
+    assert "200" in operation["responses"]
+    assert "201" in operation["responses"]
+    assert "409" in operation["responses"]
+

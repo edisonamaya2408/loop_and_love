@@ -1,5 +1,15 @@
 import re
+import hashlib
+import json
+
 from decimal import Decimal
+from uuid import UUID
+
+from sqlalchemy.exc import IntegrityError
+
+from app.domain.exceptions import (
+    OrderIdempotencyConflictError,
+)
 
 from app.domain.entities.order import (
     ORDER_STATUS_PENDING,
@@ -39,6 +49,80 @@ class OrderService:
         self.repository = repository
         self.product_repository = product_repository
 
+    
+    @staticmethod
+    def _normalize_idempotency_key(
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        if not isinstance(value, str):
+            raise ValueError(
+                "La clave de solicitud no es válida."
+            )
+
+        value = value.strip()
+
+        if not value:
+            return None
+
+        try:
+            return str(UUID(value))
+        except (ValueError, TypeError, AttributeError) as error:
+            raise ValueError(
+                "La clave de solicitud debe ser un UUID válido."
+            ) from error
+
+    @staticmethod
+    def _build_request_fingerprint(
+        *,
+        name: str,
+        phone: str,
+        city: str,
+        address: str,
+        observations: str | None,
+        items: list[dict[str, int]],
+    ) -> str:
+        canonical_payload = {
+            "name": name,
+            "phone": phone,
+            "city": city,
+            "address": address,
+            "observations": observations,
+            "items": sorted(
+                items,
+                key=lambda item: item["product_id"],
+            ),
+        }
+
+        serialized = json.dumps(
+            canonical_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+        return hashlib.sha256(
+            serialized.encode("utf-8")
+        ).hexdigest()
+
+    @staticmethod
+    def _resolve_idempotent_replay(
+        existing: OrderEntity,
+        request_fingerprint: str,
+    ) -> OrderEntity:
+        if (
+            existing.request_fingerprint
+            != request_fingerprint
+        ):
+            raise OrderIdempotencyConflictError()
+
+        existing.idempotency_replayed = True
+
+        return existing
+    
+
     def create_order(
         self,
         name: str,
@@ -47,6 +131,8 @@ class OrderService:
         address: str,
         observations: str | None,
         items,
+        *,
+        idempotency_key: str | None = None,
     ) -> OrderEntity:
         customer_name = self._validate_text(
             name,
@@ -80,6 +166,40 @@ class OrderService:
         normalized_items = self._validate_items(
             items
         )
+
+        
+        clean_idempotency_key = (
+            self._normalize_idempotency_key(
+                idempotency_key
+            )
+        )
+
+        request_fingerprint = None
+
+        if clean_idempotency_key is not None:
+            request_fingerprint = (
+                self._build_request_fingerprint(
+                    name=customer_name,
+                    phone=clean_phone,
+                    city=clean_city,
+                    address=clean_address,
+                    observations=clean_observations,
+                    items=normalized_items,
+                )
+            )
+
+            existing_order = (
+                self.repository.get_by_idempotency_key(
+                    clean_idempotency_key
+                )
+            )
+
+            if existing_order is not None:
+                return self._resolve_idempotent_replay(
+                    existing_order,
+                    request_fingerprint,
+                )
+
 
         product_items = []
 
@@ -131,11 +251,39 @@ class OrderService:
             status=ORDER_STATUS_PENDING,
             total=total,
             items=product_items,
+            idempotency_key=clean_idempotency_key,
+            request_fingerprint=request_fingerprint,
         )
 
-        return self.repository.create(
-            order
-        )
+        
+        try:
+            return self.repository.create(
+                order
+            )
+
+        except IntegrityError:
+            # Si dos solicitudes con la misma clave llegaron
+            # simultáneamente, el índice único evita duplicados.
+            # El repositorio revierte la transacción fallida
+            # antes de propagar el error.
+
+            if clean_idempotency_key is None:
+                raise
+
+            existing_order = (
+                self.repository.get_by_idempotency_key(
+                    clean_idempotency_key
+                )
+            )
+
+            if existing_order is None:
+                raise
+
+            return self._resolve_idempotent_replay(
+                existing_order,
+                request_fingerprint,
+            )
+
 
     def get_order(
         self,

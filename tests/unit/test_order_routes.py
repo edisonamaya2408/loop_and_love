@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
+from uuid import uuid4
 
 from app import create_app
 from app.presentation.routes import order_routes
@@ -17,6 +18,7 @@ class FakeOrderService:
         address,
         observations,
         items,
+        idempotency_key=None,
     ):
         self.create_calls.append(
             {
@@ -26,6 +28,7 @@ class FakeOrderService:
                 "address": address,
                 "observations": observations,
                 "items": items,
+                "idempotency_key": idempotency_key,
             }
         )
 
@@ -188,6 +191,7 @@ def test_create_order_returns_created_order(
                     "quantity": 2,
                 }
             ],
+            "idempotency_key": None,
         }
     ]
 
@@ -243,3 +247,42 @@ def test_create_order_is_public(
     )
 
     assert response.status_code == 201
+
+
+
+def test_create_order_forwards_idempotency_key(
+    monkeypatch,
+):
+    app = _create_app(monkeypatch)
+    client = app.test_client()
+
+    request_key = str(uuid4())
+
+    response = client.post(
+        "/api/orders",
+        headers={
+            "Idempotency-Key": request_key,
+        },
+        json={
+            "name": "María López",
+            "phone": "3001234567",
+            "city": "Medellín",
+            "address": "Calle 10 # 25-30",
+            "observations": None,
+            "items": [
+                {
+                    "product_id": 1,
+                    "quantity": 2,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+
+    service = app.extensions[
+        "_test_order_service"
+    ]
+
+    assert len(service.create_calls) == 1
+    assert service.create_calls[0]["idempotency_key"] == request_key

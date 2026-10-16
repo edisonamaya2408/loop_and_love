@@ -103,6 +103,8 @@ def test_create_order_persists_header_items_and_total(
             product_repository=product_repository,
         )
 
+        request_key = str(uuid4())
+
         order = service.create_order(
             name="Cliente Integración",
             phone="3001234567",
@@ -115,6 +117,7 @@ def test_create_order_persists_header_items_and_total(
                     "quantity": 3,
                 }
             ],
+            idempotency_key=request_key,
         )
 
         assert order.id is not None
@@ -157,6 +160,35 @@ def test_create_order_persists_header_items_and_total(
         assert order.items[0].line_total == (
             Decimal("75001.50")
         )
+
+        replayed_order = service.create_order(
+            name="Cliente Integración",
+            phone="3001234567",
+            city="Medellín",
+            address="Calle 10 # 25-30",
+            observations="Pedido de prueba.",
+            items=[
+                {
+                    "product_id": product.id,
+                    "quantity": 3,
+                }
+            ],
+            idempotency_key=request_key,
+        )
+
+        assert replayed_order.id == order.id
+        assert replayed_order.idempotency_replayed is True
+
+        order_count = (
+            integration_session.query(Order)
+            .filter_by(
+                idempotency_key=request_key,
+            )
+            .count()
+        )
+
+        assert order_count == 1
+
 
         integration_session.expire_all()
 

@@ -144,3 +144,13 @@ class StorageOperationError(DomainError):
         super().__init__(
             self._MESSAGES[operation]
         )
+
+
+class OrderIdempotencyConflictError(DomainError):
+    """La clave de solicitud se reutilizó con otro contenido."""
+
+    def __init__(self):
+        super().__init__(
+            "La clave de solicitud ya fue utilizada con datos "
+            "diferentes. Revisa el pedido e inténtalo nuevamente."
+        )

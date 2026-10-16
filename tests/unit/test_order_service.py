@@ -1,12 +1,15 @@
 from decimal import Decimal
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
 from app.application.services.order_service import (
     OrderService,
 )
-
+from app.domain.exceptions import (
+    OrderIdempotencyConflictError,
+)
 
 class FakeProductRepository:
     def __init__(
@@ -91,6 +94,21 @@ class FakeOrderRepository:
                 return order
 
         return None
+
+
+    def get_by_idempotency_key(
+        self,
+        idempotency_key,
+    ):
+        return next(
+            (
+                order
+                for order in self.created_orders
+                if order.idempotency_key == idempotency_key
+            ),
+            None,
+        )
+
 
     def get_all_paginated(
         self,
@@ -804,3 +822,101 @@ def test_list_admin_orders_accepts_valid_statuses(
             "limit": 12,
         }
     ]
+
+
+
+def test_create_order_is_idempotent_for_same_key_and_payload():
+    service = _service()
+    repository = service.repository
+    request_key = str(uuid4())
+
+    payload = {
+        "name": "Cliente B2B",
+        "phone": "3001234567",
+        "city": "Medellín",
+        "address": "Calle 10 # 25-30",
+        "observations": "Entregar en la mañana.",
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+    }
+
+    first_order = service.create_order(
+        **payload,
+        idempotency_key=request_key,
+    )
+
+    replayed_order = service.create_order(
+        **payload,
+        idempotency_key=request_key,
+    )
+
+    assert first_order.id == replayed_order.id
+    assert replayed_order.idempotency_replayed is True
+    assert len(repository.created_orders) == 1
+
+
+def test_create_order_rejects_same_key_with_different_payload():
+    service = _service()
+    repository = service.repository
+    request_key = str(uuid4())
+
+    payload = {
+        "name": "Cliente B2B",
+        "phone": "3001234567",
+        "city": "Medellín",
+        "address": "Calle 10 # 25-30",
+        "observations": None,
+        "items": [
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+    }
+
+    service.create_order(
+        **payload,
+        idempotency_key=request_key,
+    )
+
+    changed_payload = {
+        **payload,
+        "city": "Bogotá",
+    }
+
+    with pytest.raises(
+        OrderIdempotencyConflictError
+    ):
+        service.create_order(
+            **changed_payload,
+            idempotency_key=request_key,
+        )
+
+    assert len(repository.created_orders) == 1
+
+
+def test_create_order_rejects_invalid_idempotency_key():
+    service = _service()
+
+    with pytest.raises(
+        ValueError,
+        match="UUID válido",
+    ):
+        service.create_order(
+            name="Cliente B2B",
+            phone="3001234567",
+            city="Medellín",
+            address="Calle 10 # 25-30",
+            observations=None,
+            items=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+            idempotency_key="clave-invalida",
+        )

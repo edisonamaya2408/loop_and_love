@@ -8,6 +8,9 @@ from app.infrastructure.database.repositories import (
     SQLAlchemyOrderRepository,
     SQLAlchemyProductRepository,
 )
+from app.domain.exceptions import (
+    OrderIdempotencyConflictError,
+)
 
 
 orders_bp = Blueprint(
@@ -102,20 +105,45 @@ def create_order():
     if error_response is not None:
         return error_response
 
-    order = _get_order_service().create_order(
-        name=data.get("name"),
-        phone=data.get("phone"),
-        city=data.get("city"),
-        address=data.get("address"),
-        observations=data.get("observations"),
-        items=data.get("items"),
+    service = _get_order_service()
+
+    try:
+        order = service.create_order(
+            name=data.get("name"),
+            phone=data.get("phone"),
+            city=data.get("city"),
+            address=data.get("address"),
+            observations=data.get("observations"),
+            items=data.get("items"),
+            idempotency_key=request.headers.get(
+                "Idempotency-Key"
+            ),
+        )
+
+    except OrderIdempotencyConflictError as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "IDEMPOTENCY_KEY_REUSED",
+                    "message": str(error),
+                },
+            }
+        ), 409
+
+    response_status = (
+        200
+        if getattr(
+            order,
+            "idempotency_replayed",
+            False,
+        )
+        else 201
     )
 
     return jsonify(
         {
             "success": True,
-            "data": _order_to_dict(
-                order
-            ),
+            "data": _order_to_dict(order),
         }
-    ), 201
+    ), response_status

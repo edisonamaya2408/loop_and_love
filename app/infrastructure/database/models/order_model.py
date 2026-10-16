@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from sqlalchemy import text
 
 from app.extensions import db
 from app.infrastructure.database.types import UTCDateTime
@@ -20,6 +21,20 @@ class Order(db.Model):
         db.Index(
             "ix_orders_status",
             "status",
+        ),
+        db.Index(
+            "uq_orders_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            mssql_where=text(
+                "idempotency_key IS NOT NULL"
+            ),
+            postgresql_where=text(
+                "idempotency_key IS NOT NULL"
+            ),
+            sqlite_where=text(
+                "idempotency_key IS NOT NULL"
+            ),
         ),
     )
 
@@ -58,6 +73,16 @@ class Order(db.Model):
         db.Unicode(20),
         nullable=False,
         default="pending",
+    )
+
+    idempotency_key = db.Column(
+        db.String(36),
+        nullable=True,
+    )
+
+    request_fingerprint = db.Column(
+        db.String(64),
+        nullable=True,
     )
 
     total = db.Column(

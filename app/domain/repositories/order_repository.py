@@ -22,6 +22,15 @@ class OrderRepository(ABC):
         """Obtiene un pedido por ID."""
         raise NotImplementedError
 
+
+    @abstractmethod
+    def get_by_idempotency_key(
+        self,
+        idempotency_key: str,
+    ) -> OrderEntity | None:
+        """Busca un pedido por la clave de una solicitud anterior."""
+        raise NotImplementedError
+
     
     @abstractmethod
     def update_status(
