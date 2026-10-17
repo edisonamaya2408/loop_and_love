@@ -62,6 +62,38 @@ def _order_to_dict(order):
             if order.updated_at
             else None
         ),
+        "tracking_token": order.tracking_token,
+    }
+
+
+def _order_tracking_to_dict(order):
+    """Devuelve únicamente información no sensible de seguimiento."""
+
+    return {
+        "id": order.id,
+        "status": order.status,
+        "created_at": (
+            order.created_at.isoformat()
+            if order.created_at
+            else None
+        ),
+        "updated_at": (
+            order.updated_at.isoformat()
+            if order.updated_at
+            else None
+        ),
+        "status_history": [
+            {
+                "previous_status": entry.previous_status,
+                "new_status": entry.new_status,
+                "changed_at": (
+                    entry.changed_at.isoformat()
+                    if entry.changed_at
+                    else None
+                ),
+            }
+            for entry in order.status_history
+        ],
     }
 
 
@@ -147,3 +179,42 @@ def create_order():
             "data": _order_to_dict(order),
         }
     ), response_status
+
+
+@orders_bp.post("/track")
+@limiter.limit("20 per minute")
+def track_order():
+    """Consulta el estado de un pedido mediante su token secreto."""
+
+    data, error_response = _get_json_body()
+
+    if error_response is not None:
+        return error_response
+
+    tracking_token = data.get("tracking_token")
+
+    order = _get_order_service().get_order_tracking(
+        tracking_token
+    )
+
+    if order is None:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "ORDER_TRACKING_NOT_FOUND",
+                    "message": (
+                        "No encontramos un pedido con ese código "
+                        "de seguimiento."
+                    ),
+                },
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "success": True,
+            "data": _order_tracking_to_dict(order),
+        }
+    ), 200
+

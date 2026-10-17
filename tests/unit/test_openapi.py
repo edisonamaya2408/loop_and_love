@@ -64,6 +64,7 @@ EXPECTED_OPERATIONS = {
         "/api/admin/orders/<int:order_id>/status",
     ),
     ("GET", "/api/admin/audit-logs"),
+    ("POST", "/api/orders/track"),
 }
 
 
@@ -91,6 +92,7 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/admin/orders/{order_id}",
     "/api/admin/orders/{order_id}/status",
     "/api/admin/audit-logs",
+    "/api/orders/track",
 }
 
 
@@ -296,6 +298,7 @@ def test_openapi_public_catalog_routes_do_not_require_authentication():
         "/api/categories",
         "/api/categories/{category_id}",
         "/api/orders",
+        "/api/orders/track",
     }
 
     for path in public_paths:
@@ -343,3 +346,51 @@ def test_openapi_documents_order_idempotency():
     assert "201" in operation["responses"]
     assert "409" in operation["responses"]
 
+
+def test_openapi_documents_secure_order_tracking():
+    document = _load_openapi()
+
+    operation = document["paths"][
+        "/api/orders/track"
+    ]["post"]
+
+    assert operation["operationId"] == "trackOrder"
+    assert "security" not in operation
+
+    request_schema = document["components"]["schemas"][
+        "OrderTrackingRequest"
+    ]
+
+    assert request_schema["additionalProperties"] is False
+    assert "tracking_token" in request_schema["required"]
+
+    response_schema = document["components"]["schemas"][
+        "OrderTrackingResponse"
+    ]
+
+    data_properties = response_schema["properties"][
+        "data"
+    ]["properties"]
+
+    assert set(data_properties) == {
+        "id",
+        "status",
+        "created_at",
+        "updated_at",
+        "status_history",
+    }
+
+
+def test_openapi_documents_tracking_token_on_order_creation():
+    document = _load_openapi()
+
+    data_schema = document["components"]["schemas"][
+        "OrderResponse"
+    ]["properties"]["data"]
+
+    token_schema = data_schema["allOf"][1]["properties"][
+        "tracking_token"
+    ]
+
+    assert token_schema["minLength"] == 43
+    assert token_schema["maxLength"] == 43

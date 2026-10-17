@@ -33,6 +33,15 @@ class OrderRepository(ABC):
 
     
     @abstractmethod
+    def get_by_tracking_token(
+        self,
+        tracking_token: str,
+    ) -> OrderEntity | None:
+        """Busca un pedido por su token público de seguimiento."""
+        raise NotImplementedError
+
+    
+    @abstractmethod
     def update_status(
         self,
         order_id: int,

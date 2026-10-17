@@ -36,6 +36,20 @@ class Order(db.Model):
                 "idempotency_key IS NOT NULL"
             ),
         ),
+        db.Index(
+            "uq_orders_tracking_token",
+            "tracking_token",
+            unique=True,
+            mssql_where=text(
+                "tracking_token IS NOT NULL"
+            ),
+            postgresql_where=text(
+                "tracking_token IS NOT NULL"
+            ),
+            sqlite_where=text(
+                "tracking_token IS NOT NULL"
+            ),
+        ),
     )
 
     id = db.Column(
@@ -81,6 +95,11 @@ class Order(db.Model):
     )
 
     request_fingerprint = db.Column(
+        db.String(64),
+        nullable=True,
+    )
+    
+    tracking_token = db.Column(
         db.String(64),
         nullable=True,
     )

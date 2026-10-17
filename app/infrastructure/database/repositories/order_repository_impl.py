@@ -105,6 +105,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
             status_history=status_history,
             idempotency_key=model.idempotency_key,
             request_fingerprint=model.request_fingerprint,
+            tracking_token=model.tracking_token,
         )
 
     def create(
@@ -122,6 +123,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
             total=order.total,
             idempotency_key=order.idempotency_key,
             request_fingerprint=order.request_fingerprint,
+            tracking_token=order.tracking_token,
         )
 
         model.items = [
@@ -213,6 +215,32 @@ class SQLAlchemyOrderRepository(OrderRepository):
             )
             .filter(
                 Order.idempotency_key == idempotency_key
+            )
+            .first()
+        )
+
+        if model is None:
+            return None
+
+        return self._to_entity(
+            model,
+            include_status_history=True,
+        )
+
+    
+    def get_by_tracking_token(
+        self,
+        tracking_token: str,
+    ) -> OrderEntity | None:
+
+        model = (
+            self.session.query(Order)
+            .options(
+                selectinload(Order.items),
+                selectinload(Order.status_history),
+            )
+            .filter(
+                Order.tracking_token == tracking_token
             )
             .first()
         )

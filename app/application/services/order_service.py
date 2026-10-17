@@ -1,6 +1,7 @@
 import re
 import hashlib
 import json
+import secrets
 
 from decimal import Decimal
 from uuid import UUID
@@ -253,6 +254,7 @@ class OrderService:
             items=product_items,
             idempotency_key=clean_idempotency_key,
             request_fingerprint=request_fingerprint,
+            tracking_token=secrets.token_urlsafe(32),
         )
 
         
@@ -295,6 +297,33 @@ class OrderService:
 
         return self.repository.get_by_id(
             order_id
+        )
+
+    
+    def get_order_tracking(
+        self,
+        tracking_token: str | None,
+    ) -> OrderEntity | None:
+        """
+        Consulta el estado del pedido por un token opaco.
+
+        Un token inválido produce el mismo resultado que uno
+        inexistente, para no facilitar la enumeración de pedidos.
+        """
+
+        if not isinstance(tracking_token, str):
+            return None
+
+        token = tracking_token.strip()
+
+        if not re.fullmatch(
+            r"[A-Za-z0-9_-]{43}",
+            token,
+        ):
+            return None
+
+        return self.repository.get_by_tracking_token(
+            token
         )
 
     

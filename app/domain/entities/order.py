@@ -55,3 +55,4 @@ class OrderEntity:
         repr=False,
         compare=False,
     )
+    tracking_token: str | None = None

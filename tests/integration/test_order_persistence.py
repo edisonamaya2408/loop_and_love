@@ -200,6 +200,24 @@ def test_create_order_persists_header_items_and_total(
         )
 
         assert persisted_order is not None
+        
+        assert persisted_order.tracking_token == (
+            order.tracking_token
+        )
+
+        assert len(
+            persisted_order.tracking_token
+        ) == 43
+
+        tracked_order = service.get_order_tracking(
+            persisted_order.tracking_token
+        )
+
+        assert tracked_order is not None
+        assert tracked_order.id == persisted_order.id
+        assert tracked_order.status == persisted_order.status
+        assert tracked_order.total == persisted_order.total
+
         assert persisted_order.customer_name == (
             "Cliente Integración"
         )

@@ -110,6 +110,20 @@ class FakeOrderRepository:
         )
 
 
+    def get_by_tracking_token(
+        self,
+        tracking_token,
+    ):
+        return next(
+            (
+                order
+                for order in self.created_orders
+                if order.tracking_token == tracking_token
+            ),
+            None,
+        )
+
+
     def get_all_paginated(
         self,
         search=None,
@@ -920,3 +934,42 @@ def test_create_order_rejects_invalid_idempotency_key():
             ],
             idempotency_key="clave-invalida",
         )
+
+
+def test_created_order_has_secure_tracking_token():
+    service = _service()
+
+    order = service.create_order(
+        name="Cliente Seguimiento",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations=None,
+        items=[
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+    )
+
+    assert isinstance(order.tracking_token, str)
+    assert len(order.tracking_token) == 43
+
+    tracked_order = service.get_order_tracking(
+        order.tracking_token
+    )
+
+    assert tracked_order is not None
+    assert tracked_order.id == order.id
+    assert tracked_order.status == "pending"
+
+
+def test_order_tracking_rejects_invalid_token():
+    service = _service()
+
+    assert service.get_order_tracking(None) is None
+    assert service.get_order_tracking("") is None
+    assert service.get_order_tracking("12345") is None
+    assert service.get_order_tracking("../orders/1") is None
+

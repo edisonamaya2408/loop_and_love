@@ -748,6 +748,56 @@
         }
       }
     },
+    "/api/orders/track": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Consulta el estado de un pedido mediante su token",
+        "operationId": "trackOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderTrackingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado del pedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderTrackingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "404": {
+            "description": "No se encontró un pedido para el token proporcionado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/admin/products/{product_id}": {
       "get": {
         "tags": [
@@ -2544,6 +2594,106 @@
           }
         }
       },
+      "OrderTrackingRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tracking_token"
+        ],
+        "properties": {
+          "tracking_token": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        }
+      },
+      "OrderTrackingStatusHistoryItem": {
+        "type": "object",
+        "required": [
+          "previous_status",
+          "new_status",
+          "changed_at"
+        ],
+        "properties": {
+          "previous_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ],
+            "nullable": true
+          },
+          "new_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "OrderTrackingResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "id",
+              "status",
+              "created_at",
+              "updated_at",
+              "status_history"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "confirmed",
+                  "cancelled"
+                ]
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "status_history": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OrderTrackingStatusHistoryItem"
+                }
+              }
+            }
+          }
+        }
+      },
       "Order": {
         "type": "object",
         "required": [
@@ -2895,7 +3045,26 @@
             "example": true
           },
           "data": {
-            "$ref": "#/components/schemas/Order"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Order"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "tracking_token"
+                ],
+                "properties": {
+                  "tracking_token": {
+                    "type": "string",
+                    "minLength": 43,
+                    "maxLength": 43,
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "Token secreto utilizado para consultar el estado del pedido."
+                  }
+                }
+              }
+            ]
           }
         }
       },
