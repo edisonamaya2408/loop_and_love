@@ -1189,3 +1189,12 @@
     outline: 3px solid var(--color-rose-deep);
     outline-offset: 3px;
 }
+
+
+@media (hover: none) {
+    .catalog-product-card:hover {
+        transform: none;
+        border-color: var(--color-border);
+        box-shadow: var(--shadow-sm);
+    }
+}

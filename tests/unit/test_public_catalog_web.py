@@ -1150,3 +1150,55 @@ def test_public_catalog_feedbacks_auto_dismiss_and_tracking_guidance(
 
     assert ".catalog-order-tracking__guidance" in css
     assert ".catalog-order-tracking__contact" in css
+
+
+def test_public_catalog_mobile_controls_are_touch_friendly(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    resources = {
+        "public": client.get("/static/css/public.css"),
+        "catalog": client.get("/static/css/catalog.css"),
+        "cart": client.get("/static/css/cart.css"),
+        "order": client.get("/static/css/order.css"),
+    }
+
+    for name, response in resources.items():
+        assert response.status_code == 200, name
+
+    public_css = resources["public"].get_data(as_text=True)
+    catalog_css = resources["catalog"].get_data(as_text=True)
+    cart_css = resources["cart"].get_data(as_text=True)
+    order_css = resources["order"].get_data(as_text=True)
+
+    assert re.search(
+        r"\.catalog-field input,\s*"
+        r"\.catalog-field select\s*\{[^}]*"
+        r"font-size:\s*16px;",
+        public_css,
+        re.S,
+    )
+
+    assert re.search(
+        r"\.catalog-order-form input,\s*"
+        r"\.catalog-order-form textarea,\s*"
+        r"\.catalog-order-tracking__form "
+        r"input\[type=\"text\"\]\s*\{[^}]*"
+        r"font-size:\s*16px;",
+        order_css,
+        re.S,
+    )
+
+    assert re.search(
+        r"\.catalog-cart-item__quantity-button\s*\{[^}]*"
+        r"width:\s*44px;[^}]*height:\s*44px;",
+        cart_css,
+        re.S,
+    )
+
+    assert ".catalog-cart-item__remove:focus-visible" in cart_css
+    assert ".catalog-product-card:hover" in catalog_css
+    assert "@media (hover: none)" in catalog_css
+    assert ".catalog-order-tracking__contact" in order_css

@@ -699,3 +699,61 @@
     }
 
 }
+
+
+/* ==================================================
+   MOBILE CART CONTROLS
+================================================== */
+
+@media (max-width: 640px) {
+    .catalog-cart-item__quantity-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .catalog-cart-item__remove {
+        min-height: 44px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.72rem;
+    }
+
+    .catalog-product-card__add {
+        min-height: 44px;
+    }
+
+    .catalog-cart-actions .button {
+        min-height: 44px;
+    }
+
+    .catalog-cart-item__controls {
+        gap: 0.5rem;
+    }
+}
+
+.catalog-cart-item__quantity-button:focus-visible,
+.catalog-cart-item__remove:focus-visible {
+    outline: 3px solid var(--color-rose-deep);
+    outline-offset: 2px;
+}
+
+/*
+ * Los dispositivos táctiles no deben conservar los
+ * efectos hover después de tocar un botón.
+ */
+@media (hover: none) {
+    .catalog-cart-item__quantity-button:hover {
+        background: var(--color-white);
+        border-color: var(--color-border);
+    }
+
+    .catalog-cart-item__remove:hover {
+        border-color: var(--color-border);
+        background: var(--color-white);
+    }
+
+    .catalog-product-card__add:hover {
+        background: var(--color-brown);
+        border-color: var(--color-brown);
+        transform: none;
+    }
+}

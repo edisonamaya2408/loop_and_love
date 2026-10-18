@@ -850,3 +850,21 @@
     }
 
 }
+
+
+/* ==================================================
+   MOBILE FORM USABILITY
+================================================== */
+
+@media (max-width: 640px) {
+    .catalog-field input,
+    .catalog-field select {
+        min-height: 48px;
+        font-size: 16px;
+    }
+
+    .catalog-filter-toggle,
+    .public-order-button {
+        min-height: 44px;
+    }
+}
