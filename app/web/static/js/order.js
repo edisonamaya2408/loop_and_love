@@ -4,13 +4,31 @@
 const ORDER_API_URL =
     "/api/orders";
 
-
 const ORDER_ATTEMPT_STORAGE_KEY =
     "loop_and_love.b2b_order_attempt";
 
 const ORDER_IDEMPOTENCY_KEY_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const ORDER_TRACKING_SESSION_KEY =
+    "loop_and_love.b2b_tracking_token";
+
+const ORDER_TRACKING_LOCAL_KEY =
+    "loop_and_love.b2b_tracking_token.remembered";
+
+const ORDER_TRACKING_TOKEN_PATTERN =
+    /^[A-Za-z0-9_-]{43}$/;
+
+const ORDER_TRACKING_STATUS_LABELS = {
+    pending: "Pendiente",
+    confirmed: "Confirmado",
+    cancelled: "Cancelado",
+};
+
+const orderTrackingState = {
+    submitting: false,
+    lastVerifiedToken: null,
+};
 
 const orderState = {
     submitting: false,
@@ -817,10 +835,10 @@ function showUnresolvedAttemptFeedback(message) {
 
     showOrderFeedback(
         message ||
-            "Hay un intento anterior cuyo resultado no se pudo " +
-            "confirmar. Para evitar duplicados, no enviaremos " +
-            "automáticamente un pedido con una clave diferente. " +
-            "Comprueba si el pedido original quedó registrado.",
+        "Hay un intento anterior cuyo resultado no se pudo " +
+        "confirmar. Para evitar duplicados, no enviaremos " +
+        "automáticamente un pedido con una clave diferente. " +
+        "Comprueba si el pedido original quedó registrado.",
         "warning",
         "",
         {
@@ -973,6 +991,36 @@ async function performOrderSubmission(
         }
 
         confirmedOrder = data.data;
+
+        if (
+            typeof confirmedOrder.tracking_token === "string" &&
+            ORDER_TRACKING_TOKEN_PATTERN.test(
+                confirmedOrder.tracking_token
+            )
+        ) {
+            saveOrderTrackingToken(
+                confirmedOrder.tracking_token
+            );
+
+            const forgetButton = getOrderElement(
+                "order-tracking-forget"
+            );
+
+            if (forgetButton) {
+                forgetButton.hidden = false;
+            }
+
+            void loadOrderTracking(
+                confirmedOrder.tracking_token
+            );
+        } else {
+            showOrderTrackingFeedback(
+                "El pedido fue registrado, pero no recibimos " +
+                "un código de seguimiento válido. Conserva el " +
+                "número de pedido para solicitar ayuda.",
+                "warning"
+            );
+        }
 
         const whatsappNumber = getWhatsAppNumber();
 
@@ -1209,6 +1257,583 @@ async function submitCatalogOrder(event) {
 }
 
 
+function getOrderTrackingStatusLabel(status) {
+    return ORDER_TRACKING_STATUS_LABELS[status]
+        || "Estado no disponible";
+}
+
+
+function formatOrderTrackingDate(value) {
+    if (!value) {
+        return "Fecha no disponible";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Fecha no disponible";
+    }
+
+    return new Intl.DateTimeFormat(
+        "es-CO",
+        {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }
+    ).format(date);
+}
+
+
+function showOrderTrackingFeedback(
+    message,
+    type = "info"
+) {
+    const feedback = getOrderElement(
+        "order-tracking-feedback"
+    );
+
+    if (!feedback) {
+        return;
+    }
+
+    feedback.textContent = message;
+    feedback.className =
+        `catalog-order-tracking__feedback ` +
+        `catalog-order-tracking__feedback--${type}`;
+
+    feedback.hidden = false;
+}
+
+
+function hideOrderTrackingFeedback() {
+    const feedback = getOrderElement(
+        "order-tracking-feedback"
+    );
+
+    if (!feedback) {
+        return;
+    }
+
+    feedback.hidden = true;
+    feedback.textContent = "";
+}
+
+
+function clearOrderTrackingResult() {
+    const result = getOrderElement(
+        "order-tracking-result"
+    );
+
+    if (!result) {
+        return;
+    }
+
+    result.replaceChildren();
+    result.hidden = true;
+}
+
+
+function saveOrderTrackingToken(token) {
+    if (
+        typeof token !== "string" ||
+        !ORDER_TRACKING_TOKEN_PATTERN.test(token)
+    ) {
+        return false;
+    }
+
+    const tokenInput = getOrderElement(
+        "order-tracking-token"
+    );
+
+    const rememberCheckbox = getOrderElement(
+        "order-tracking-remember"
+    );
+
+    if (tokenInput) {
+        tokenInput.value = token;
+    }
+
+    orderTrackingState.lastVerifiedToken = token;
+
+    if (rememberCheckbox?.checked) {
+        try {
+            window.localStorage.setItem(
+                ORDER_TRACKING_LOCAL_KEY,
+                token
+            );
+
+            try {
+                window.sessionStorage.removeItem(
+                    ORDER_TRACKING_SESSION_KEY
+                );
+            } catch (error) {
+                // El token persistente ya quedó guardado.
+            }
+
+            return true;
+        } catch (error) {
+            // Si localStorage no está disponible, usamos la sesión.
+        }
+    }
+
+    try {
+        window.sessionStorage.setItem(
+            ORDER_TRACKING_SESSION_KEY,
+            token
+        );
+    } catch (error) {
+        // El seguimiento manual seguirá disponible en esta página.
+    }
+
+    try {
+        window.localStorage.removeItem(
+            ORDER_TRACKING_LOCAL_KEY
+        );
+    } catch (error) {
+        // La limpieza del almacenamiento es de mejor esfuerzo.
+    }
+
+    return true;
+}
+
+
+function readSavedOrderTrackingToken() {
+    const rememberCheckbox = getOrderElement(
+        "order-tracking-remember"
+    );
+
+    try {
+        const rememberedToken =
+            window.localStorage.getItem(
+                ORDER_TRACKING_LOCAL_KEY
+            );
+
+        if (
+            rememberedToken &&
+            ORDER_TRACKING_TOKEN_PATTERN.test(
+                rememberedToken
+            )
+        ) {
+            if (rememberCheckbox) {
+                rememberCheckbox.checked = true;
+            }
+
+            return rememberedToken;
+        }
+
+        if (rememberedToken) {
+            window.localStorage.removeItem(
+                ORDER_TRACKING_LOCAL_KEY
+            );
+        }
+    } catch (error) {
+        // Intentar después con sessionStorage.
+    }
+
+    try {
+        const sessionToken =
+            window.sessionStorage.getItem(
+                ORDER_TRACKING_SESSION_KEY
+            );
+
+        if (
+            sessionToken &&
+            ORDER_TRACKING_TOKEN_PATTERN.test(
+                sessionToken
+            )
+        ) {
+            if (rememberCheckbox) {
+                rememberCheckbox.checked = false;
+            }
+
+            return sessionToken;
+        }
+
+        if (sessionToken) {
+            window.sessionStorage.removeItem(
+                ORDER_TRACKING_SESSION_KEY
+            );
+        }
+    } catch (error) {
+        // No es imprescindible disponer de almacenamiento local.
+    }
+
+    return null;
+}
+
+
+function clearSavedOrderTrackingToken() {
+    try {
+        window.sessionStorage.removeItem(
+            ORDER_TRACKING_SESSION_KEY
+        );
+    } catch (error) {
+        // Continuar con el intento de limpieza.
+    }
+
+    try {
+        window.localStorage.removeItem(
+            ORDER_TRACKING_LOCAL_KEY
+        );
+    } catch (error) {
+        // Continuar con la limpieza visual.
+    }
+
+    orderTrackingState.lastVerifiedToken = null;
+
+    const tokenInput = getOrderElement(
+        "order-tracking-token"
+    );
+
+    const rememberCheckbox = getOrderElement(
+        "order-tracking-remember"
+    );
+
+    const forgetButton = getOrderElement(
+        "order-tracking-forget"
+    );
+
+    if (tokenInput) {
+        tokenInput.value = "";
+    }
+
+    if (rememberCheckbox) {
+        rememberCheckbox.checked = false;
+    }
+
+    if (forgetButton) {
+        forgetButton.hidden = true;
+    }
+
+    hideOrderTrackingFeedback();
+    clearOrderTrackingResult();
+}
+
+
+function renderOrderTrackingResult(data) {
+    const result = getOrderElement(
+        "order-tracking-result"
+    );
+
+    if (!result) {
+        return;
+    }
+
+    result.replaceChildren();
+
+    const heading = document.createElement("h4");
+    heading.className =
+        "catalog-order-tracking__result-title";
+
+    heading.textContent = `Pedido #${data.id}`;
+
+    const currentStatus = document.createElement("span");
+
+    const knownStatus =
+        Object.prototype.hasOwnProperty.call(
+            ORDER_TRACKING_STATUS_LABELS,
+            data.status
+        );
+
+    currentStatus.className =
+        "catalog-order-tracking__status" +
+        (
+            knownStatus
+                ? ` catalog-order-tracking__status--${data.status}`
+                : ""
+        );
+
+    currentStatus.textContent =
+        getOrderTrackingStatusLabel(data.status);
+
+    const createdDate = document.createElement("p");
+
+    createdDate.textContent =
+        `Creado: ${formatOrderTrackingDate(data.created_at)}`;
+
+    const updatedDate = document.createElement("p");
+
+    updatedDate.textContent =
+        `Última actualización: ${formatOrderTrackingDate(data.updated_at)
+        }`;
+
+    const historyHeading = document.createElement("h5");
+    historyHeading.textContent = "Historial del pedido";
+
+    const historyList = document.createElement("ol");
+
+    historyList.className =
+        "catalog-order-tracking__history";
+
+    const history = Array.isArray(data.status_history)
+        ? data.status_history
+        : [];
+
+    history.forEach((entry) => {
+        const item = document.createElement("li");
+
+        const transition = document.createElement("strong");
+
+        if (entry.previous_status) {
+            transition.textContent =
+                `${getOrderTrackingStatusLabel(entry.previous_status)} ` +
+                `→ ${getOrderTrackingStatusLabel(entry.new_status)}`;
+        } else {
+            transition.textContent =
+                `Pedido registrado · ${getOrderTrackingStatusLabel(entry.new_status)
+                }`;
+        }
+
+        const date = document.createElement("time");
+
+        date.textContent = formatOrderTrackingDate(
+            entry.changed_at
+        );
+
+        if (entry.changed_at) {
+            date.dateTime = entry.changed_at;
+        }
+
+        item.append(
+            transition,
+            date
+        );
+
+        historyList.append(item);
+    });
+
+    result.append(
+        heading,
+        currentStatus,
+        createdDate,
+        updatedDate,
+        historyHeading
+    );
+
+    if (history.length) {
+        result.append(historyList);
+    } else {
+        const empty = document.createElement("p");
+
+        empty.textContent =
+            "Todavía no hay eventos disponibles en el historial.";
+
+        result.append(empty);
+    }
+
+    result.hidden = false;
+}
+
+
+async function loadOrderTracking(token) {
+    if (orderTrackingState.submitting) {
+        return;
+    }
+
+    const normalizedToken = (
+        typeof token === "string"
+            ? token.trim()
+            : ""
+    );
+
+    const tokenInput = getOrderElement(
+        "order-tracking-token"
+    );
+
+    const submitButton = getOrderElement(
+        "order-tracking-submit"
+    );
+
+    const forgetButton = getOrderElement(
+        "order-tracking-forget"
+    );
+
+    if (
+        !ORDER_TRACKING_TOKEN_PATTERN.test(
+            normalizedToken
+        )
+    ) {
+        showOrderTrackingFeedback(
+            "Ingresa un código válido de 43 caracteres.",
+            "error"
+        );
+
+        clearOrderTrackingResult();
+        return;
+    }
+
+    orderTrackingState.submitting = true;
+
+    if (tokenInput) {
+        tokenInput.disabled = true;
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Consultando...";
+    }
+
+    hideOrderTrackingFeedback();
+
+    showOrderTrackingFeedback(
+        "Consultando el estado del pedido...",
+        "pending"
+    );
+
+    try {
+        const response = await fetch(
+            `${ORDER_API_URL}/track`,
+            {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    tracking_token: normalizedToken,
+                }),
+            }
+        );
+
+        const data = await response.json().catch(
+            () => null
+        );
+
+        if (
+            !response.ok ||
+            data?.success !== true ||
+            !data?.data
+        ) {
+            if (response.status === 404) {
+                throw new Error(
+                    "No encontramos un pedido con ese código. " +
+                    "Verifica que lo hayas copiado completo."
+                );
+            }
+
+            if (response.status === 429) {
+                throw new Error(
+                    "Se realizaron demasiadas consultas. " +
+                    "Espera un momento e inténtalo nuevamente."
+                );
+            }
+
+            throw new Error(
+                "No pudimos consultar el pedido. " +
+                "Comprueba tu conexión e inténtalo nuevamente."
+            );
+        }
+
+        saveOrderTrackingToken(normalizedToken);
+
+        if (forgetButton) {
+            forgetButton.hidden = false;
+        }
+
+        renderOrderTrackingResult(data.data);
+
+        showOrderTrackingFeedback(
+            "Consulta completada correctamente.",
+            "success"
+        );
+
+    } catch (error) {
+        showOrderTrackingFeedback(
+            error instanceof Error
+                ? error.message
+                : "No pudimos consultar el pedido.",
+            "error"
+        );
+    } finally {
+        orderTrackingState.submitting = false;
+
+        if (tokenInput) {
+            tokenInput.disabled = false;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = "Consultar estado";
+        }
+    }
+}
+
+
+function setupCatalogOrderTracking() {
+    const form = getOrderElement(
+        "order-tracking-form"
+    );
+
+    const tokenInput = getOrderElement(
+        "order-tracking-token"
+    );
+
+    const rememberCheckbox = getOrderElement(
+        "order-tracking-remember"
+    );
+
+    const forgetButton = getOrderElement(
+        "order-tracking-forget"
+    );
+
+    if (
+        !form ||
+        !tokenInput
+    ) {
+        return;
+    }
+
+    form.addEventListener(
+        "submit",
+        (event) => {
+            event.preventDefault();
+
+            void loadOrderTracking(
+                tokenInput.value
+            );
+        }
+    );
+
+    rememberCheckbox?.addEventListener(
+        "change",
+        () => {
+            const verifiedToken =
+                orderTrackingState.lastVerifiedToken;
+
+            if (
+                verifiedToken &&
+                ORDER_TRACKING_TOKEN_PATTERN.test(
+                    verifiedToken
+                )
+            ) {
+                saveOrderTrackingToken(
+                    verifiedToken
+                );
+            }
+        }
+    );
+
+    forgetButton?.addEventListener(
+        "click",
+        clearSavedOrderTrackingToken
+    );
+
+    const storedToken =
+        readSavedOrderTrackingToken();
+
+    if (storedToken) {
+        tokenInput.value = storedToken;
+
+        if (forgetButton) {
+            forgetButton.hidden = false;
+        }
+
+        void loadOrderTracking(
+            storedToken
+        );
+    }
+}
+
 
 /* ==================================================
    INITIALIZE
@@ -1243,5 +1868,6 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
         setupCatalogOrderForm();
+        setupCatalogOrderTracking();
     }
 );

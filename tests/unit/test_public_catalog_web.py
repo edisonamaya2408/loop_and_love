@@ -1067,3 +1067,44 @@ def test_public_order_supports_safe_retry_and_result_summary(
     assert ".catalog-order-feedback--pending" in css
     assert ".catalog-order-feedback__summary" in css
     assert ".catalog-order-feedback__action" in css
+
+
+def test_public_catalog_supports_order_tracking_ui(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    html_response = client.get("/")
+    js_response = client.get("/static/js/order.js")
+    css_response = client.get("/static/css/order.css")
+
+    assert html_response.status_code == 200
+    assert js_response.status_code == 200
+    assert css_response.status_code == 200
+
+    html = html_response.get_data(as_text=True)
+    javascript = js_response.get_data(as_text=True)
+    css = css_response.get_data(as_text=True)
+
+    assert 'id="order-tracking-form"' in html
+    assert 'id="order-tracking-token"' in html
+    assert 'id="order-tracking-remember"' in html
+    assert 'id="order-tracking-submit"' in html
+    assert 'id="order-tracking-result"' in html
+
+    assert "ORDER_TRACKING_SESSION_KEY" in javascript
+    assert "ORDER_TRACKING_LOCAL_KEY" in javascript
+    assert "function saveOrderTrackingToken(" in javascript
+    assert "function readSavedOrderTrackingToken(" in javascript
+    assert "function renderOrderTrackingResult(" in javascript
+    assert "function loadOrderTracking(" in javascript
+    assert '`${ORDER_API_URL}/track`' in javascript
+    assert "setupCatalogOrderTracking();" in javascript
+    assert "confirmedOrder.tracking_token" in javascript
+
+    assert ".catalog-order-tracking__result" in css
+    assert ".catalog-order-tracking__history" in css
+    assert ".catalog-order-tracking__status--pending" in css
+    assert ".catalog-order-tracking__status--confirmed" in css
+    assert ".catalog-order-tracking__status--cancelled" in css

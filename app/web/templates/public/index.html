@@ -485,6 +485,65 @@ Loop & Love | Catálogo
             <div class="catalog-order-feedback" id="order-feedback" hidden role="status" aria-live="polite">
             </div>
 
+
+            <section class="catalog-order-tracking" id="order-tracking" aria-labelledby="order-tracking-title">
+                <div class="catalog-order-tracking__header">
+                    <span class="eyebrow">SEGUIMIENTO</span>
+
+                    <h3 id="order-tracking-title">
+                        Consulta el estado de tu pedido
+                    </h3>
+
+                    <p>
+                        Utiliza el código privado de seguimiento que recibiste
+                        al registrar el pedido. No necesitas crear una cuenta.
+                    </p>
+
+                    <p class="catalog-order-tracking__privacy">
+                        Mantén tu código privado. Cualquier persona que lo tenga
+                        podrá consultar el estado del pedido.
+                    </p>
+                </div>
+
+                <form id="order-tracking-form" class="catalog-order-tracking__form">
+                    <div class="catalog-field">
+                        <label for="order-tracking-token">
+                            Código de seguimiento
+                        </label>
+
+                        <input id="order-tracking-token" name="tracking_token" type="text" minlength="43" maxlength="43"
+                            pattern="[A-Za-z0-9_-]{43}" autocomplete="off" autocapitalize="off" spellcheck="false"
+                            placeholder="Código de 43 caracteres" required>
+                    </div>
+
+                    <label class="catalog-order-tracking__remember">
+                        <input id="order-tracking-remember" type="checkbox">
+                        <span>
+                            Recordar en este dispositivo
+                            <small>
+                                No lo actives en dispositivos compartidos.
+                            </small>
+                        </span>
+                    </label>
+
+                    <div class="catalog-order-tracking__actions">
+                        <button id="order-tracking-submit" type="submit" class="button button--primary">
+                            Consultar estado
+                        </button>
+
+                        <button id="order-tracking-forget" type="button" class="button button--secondary" hidden>
+                            Olvidar código guardado
+                        </button>
+                    </div>
+                </form>
+
+                <p id="order-tracking-feedback" class="catalog-order-tracking__feedback" role="status"
+                    aria-live="polite" hidden></p>
+
+                <div id="order-tracking-result" class="catalog-order-tracking__result" aria-live="polite" hidden></div>
+            </section>
+
+
         </div>
 
     </div>
