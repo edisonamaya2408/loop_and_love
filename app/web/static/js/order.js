@@ -37,6 +37,12 @@ const orderState = {
     blockedAttempt: null,
 };
 
+const ORDER_FEEDBACK_AUTO_DISMISS_MS = 6000;
+const ORDER_TRACKING_FEEDBACK_AUTO_DISMISS_MS = 6000;
+
+let orderFeedbackDismissTimer = null;
+let orderTrackingFeedbackDismissTimer = null;
+
 
 /* ==================================================
    DOM
@@ -435,7 +441,33 @@ function getOrderApiError(
    FEEDBACK
 ================================================== */
 
+
+function clearOrderFeedbackDismissTimer() {
+    if (orderFeedbackDismissTimer !== null) {
+        window.clearTimeout(
+            orderFeedbackDismissTimer
+        );
+
+        orderFeedbackDismissTimer = null;
+    }
+}
+
+
+function clearOrderTrackingFeedbackDismissTimer() {
+    if (orderTrackingFeedbackDismissTimer !== null) {
+        window.clearTimeout(
+            orderTrackingFeedbackDismissTimer
+        );
+
+        orderTrackingFeedbackDismissTimer = null;
+    }
+}
+
+
 function clearOrderFeedback() {
+
+    clearOrderFeedbackDismissTimer();
+
     const feedback =
         getOrderElement(
             "order-feedback"
@@ -471,6 +503,8 @@ function showOrderFeedback(
     if (!feedback) {
         return;
     }
+
+    clearOrderFeedbackDismissTimer();
 
     feedback.replaceChildren();
     feedback.hidden = false;
@@ -546,6 +580,68 @@ function showOrderFeedback(
 
         feedback.append(action);
     }
+
+    const hasAction =
+        typeof options.actionLabel === "string" &&
+        typeof options.onAction === "function";
+
+    /*
+     * Las operaciones en curso, las advertencias con acciones
+     * y los mensajes que contienen el resumen del pedido no
+     * deben desaparecer automáticamente por completo.
+     */
+    if (
+        type === "pending" ||
+        hasAction
+    ) {
+        return;
+    }
+
+    const keepOrderDetails =
+        Boolean(options.summary || whatsappUrl);
+
+    const dismissDelay =
+        type === "error"
+            ? 8000
+            : type === "warning"
+                ? 8000
+                : ORDER_FEEDBACK_AUTO_DISMISS_MS;
+
+    orderFeedbackDismissTimer = window.setTimeout(
+        () => {
+            orderFeedbackDismissTimer = null;
+
+            if (
+                !feedback.isConnected ||
+                feedback.hidden
+            ) {
+                return;
+            }
+
+            if (keepOrderDetails) {
+                /*
+                 * El resumen del pedido y el enlace a WhatsApp
+                 * deben seguir disponibles. Solo desaparece
+                 * el mensaje textual de confirmación.
+                 */
+                const messageElement =
+                    feedback.querySelector(
+                        ".catalog-order-feedback__text"
+                    );
+
+                messageElement?.remove();
+                return;
+            }
+
+            feedback.hidden = true;
+            feedback.className =
+                "catalog-order-feedback";
+
+            feedback.replaceChildren();
+        },
+        dismissDelay
+    );
+
 }
 
 
@@ -1296,12 +1392,45 @@ function showOrderTrackingFeedback(
         return;
     }
 
+    clearOrderTrackingFeedbackDismissTimer();
+
     feedback.textContent = message;
     feedback.className =
         `catalog-order-tracking__feedback ` +
         `catalog-order-tracking__feedback--${type}`;
 
     feedback.hidden = false;
+
+    // El mensaje de espera permanece mientras la consulta está
+    // activa. El resultado se presenta en otro contenedor.
+    if (type === "pending") {
+        return;
+    }
+
+    const dismissDelay =
+        type === "error"
+            ? 8000
+            : type === "warning"
+                ? 8000
+                : ORDER_TRACKING_FEEDBACK_AUTO_DISMISS_MS;
+
+    orderTrackingFeedbackDismissTimer =
+        window.setTimeout(
+            () => {
+                orderTrackingFeedbackDismissTimer = null;
+
+                if (
+                    !feedback.isConnected ||
+                    feedback.hidden
+                ) {
+                    return;
+                }
+
+                feedback.hidden = true;
+                feedback.textContent = "";
+            },
+            dismissDelay
+        );
 }
 
 
@@ -1309,6 +1438,8 @@ function hideOrderTrackingFeedback() {
     const feedback = getOrderElement(
         "order-tracking-feedback"
     );
+
+    clearOrderTrackingFeedbackDismissTimer();
 
     if (!feedback) {
         return;
@@ -1510,6 +1641,67 @@ function clearSavedOrderTrackingToken() {
 }
 
 
+function getOrderTrackingGuidance(status) {
+    switch (status) {
+        case "pending":
+            return (
+                "Tu pedido fue recibido y está pendiente de " +
+                "confirmación por la tienda. Si ya enviaste tu " +
+                "mensaje por WhatsApp, espera la respuesta. " +
+                "Puedes contactar a la tienda si necesitas " +
+                "complementar algún dato."
+            );
+
+        case "confirmed":
+            return (
+                "La tienda confirmó tu pedido. Para coordinar " +
+                "la entrega, los tiempos y cualquier detalle " +
+                "adicional, continúa la conversación por WhatsApp."
+            );
+
+        case "cancelled":
+            return (
+                "Este pedido figura como cancelado. Si tienes " +
+                "dudas o deseas realizar otro pedido, contacta " +
+                "a la tienda antes de enviarlo nuevamente."
+            );
+
+        default:
+            return (
+                "Consulta el historial para revisar las " +
+                "actualizaciones disponibles de tu pedido."
+            );
+    }
+}
+
+
+function createOrderTrackingContactLink(orderId) {
+    const whatsappNumber = getWhatsAppNumber();
+
+    if (!isValidWhatsAppNumber(whatsappNumber)) {
+        return null;
+    }
+
+    const link = document.createElement("a");
+
+    const message =
+        `Hola, quisiera consultar el estado del pedido #${orderId}.`;
+
+    link.className =
+        "catalog-order-tracking__contact";
+
+    link.href =
+        `https://wa.me/${whatsappNumber}` +
+        `?text=${encodeURIComponent(message)}`;
+
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Consultar por WhatsApp";
+
+    return link;
+}
+
+
 function renderOrderTrackingResult(data) {
     const result = getOrderElement(
         "order-tracking-result"
@@ -1545,6 +1737,15 @@ function renderOrderTrackingResult(data) {
 
     currentStatus.textContent =
         getOrderTrackingStatusLabel(data.status);
+
+
+    const guidance = document.createElement("p");
+
+    guidance.className =
+        "catalog-order-tracking__guidance";
+
+    guidance.textContent =
+        getOrderTrackingGuidance(data.status);
 
     const createdDate = document.createElement("p");
 
@@ -1605,6 +1806,7 @@ function renderOrderTrackingResult(data) {
     result.append(
         heading,
         currentStatus,
+        guidance,
         createdDate,
         updatedDate,
         historyHeading
@@ -1619,6 +1821,13 @@ function renderOrderTrackingResult(data) {
             "Todavía no hay eventos disponibles en el historial.";
 
         result.append(empty);
+    }
+
+    const contactLink =
+        createOrderTrackingContactLink(data.id);
+
+    if (contactLink) {
+        result.append(contactLink);
     }
 
     result.hidden = false;

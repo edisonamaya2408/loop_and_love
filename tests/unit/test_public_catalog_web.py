@@ -1108,3 +1108,45 @@ def test_public_catalog_supports_order_tracking_ui(
     assert ".catalog-order-tracking__status--pending" in css
     assert ".catalog-order-tracking__status--confirmed" in css
     assert ".catalog-order-tracking__status--cancelled" in css
+
+
+def test_public_catalog_feedbacks_auto_dismiss_and_tracking_guidance(
+    monkeypatch,
+):
+    app = _create_web_app(monkeypatch)
+    client = app.test_client()
+
+    js_response = client.get("/static/js/order.js")
+    css_response = client.get("/static/css/order.css")
+
+    assert js_response.status_code == 200
+    assert css_response.status_code == 200
+
+    javascript = js_response.get_data(as_text=True)
+    css = css_response.get_data(as_text=True)
+
+    # Los avisos temporales tienen sus propios temporizadores.
+    assert "ORDER_FEEDBACK_AUTO_DISMISS_MS" in javascript
+    assert "ORDER_TRACKING_FEEDBACK_AUTO_DISMISS_MS" in javascript
+    assert "clearOrderFeedbackDismissTimer" in javascript
+    assert "clearOrderTrackingFeedbackDismissTimer" in javascript
+    assert "window.setTimeout" in javascript
+
+    # El resumen y el enlace de WhatsApp no deben ocultarse
+    # junto con el texto temporal de confirmación.
+    assert "keepOrderDetails" in javascript
+    assert "messageElement?.remove()" in javascript
+    assert "type === \"pending\"" in javascript
+    assert "hasAction" in javascript
+
+    # Los estados conservan instrucciones visibles y una
+    # acción de contacto independiente del aviso temporal.
+    assert "function getOrderTrackingGuidance(" in javascript
+    assert 'case "pending"' in javascript
+    assert 'case "confirmed"' in javascript
+    assert 'case "cancelled"' in javascript
+    assert "function createOrderTrackingContactLink(" in javascript
+    assert "catalog-order-tracking__guidance" in javascript
+
+    assert ".catalog-order-tracking__guidance" in css
+    assert ".catalog-order-tracking__contact" in css
