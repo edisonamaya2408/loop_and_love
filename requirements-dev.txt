@@ -1,0 +1,11 @@
+# Development and test dependencies.
+# Runtime dependencies are inherited from requirements.txt.
+
+-r requirements.txt
+
+# Unit and integration tests
+pytest==9.1.1
+pytest-flask==1.3.0
+
+# Browser end-to-end tests
+playwright==1.63.0

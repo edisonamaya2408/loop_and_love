@@ -866,3 +866,186 @@ def test_admin_order_status_audit_records_previous_and_new_status(
         if persisted_order is not None:
             integration_session.delete(persisted_order)
             integration_session.commit()
+
+
+@pytest.mark.integration
+def test_public_order_lifecycle_is_idempotent_and_trackable(
+    client,
+    auth_token,
+    persisted_product,
+    integration_session,
+):
+    idempotency_key = str(uuid4())
+    order_id = None
+
+    request_payload = {
+        "name": "Cliente Flujo Completo",
+        "phone": "3001234567",
+        "city": "Medellín",
+        "address": "Calle 10 # 25-30",
+        "observations": "Prueba integral del catálogo B2B.",
+        "items": [
+            {
+                "product_id": persisted_product.id,
+                "quantity": 2,
+            }
+        ],
+    }
+
+    headers = {
+        "Idempotency-Key": idempotency_key,
+    }
+
+    try:
+        # 1. El cliente registra su pedido.
+        created_response = client.post(
+            "/api/orders",
+            json=request_payload,
+            headers=headers,
+        )
+
+        assert created_response.status_code == 201
+
+        created_body = created_response.get_json()
+
+        assert created_body["success"] is True
+
+        created_order = created_body["data"]
+        order_id = created_order["id"]
+        tracking_token = created_order["tracking_token"]
+
+        assert order_id is not None
+        assert len(tracking_token) == 43
+
+        assert created_order["status"] == "pending"
+
+        assert len(created_order["items"]) == 1
+
+        assert created_order["items"][0]["product_id"] == (
+            persisted_product.id
+        )
+
+        assert created_order["items"][0]["quantity"] == 2
+
+        # 2. El cliente reintenta con la misma clave y contenido.
+        replay_response = client.post(
+            "/api/orders",
+            json=request_payload,
+            headers=headers,
+        )
+
+        assert replay_response.status_code == 200
+
+        replay_order = replay_response.get_json()["data"]
+
+        assert replay_order["id"] == order_id
+        assert replay_order["tracking_token"] == tracking_token
+
+        # 3. La base de datos conserva una sola cabecera.
+        integration_session.expire_all()
+
+        stored_count = (
+            integration_session.query(Order)
+            .filter_by(
+                idempotency_key=idempotency_key
+            )
+            .count()
+        )
+
+        assert stored_count == 1
+
+        # 4. El cliente consulta su pedido mediante el token.
+        pending_response = client.post(
+            "/api/orders/track",
+            json={
+                "tracking_token": tracking_token,
+            },
+        )
+
+        assert pending_response.status_code == 200
+
+        pending_data = pending_response.get_json()["data"]
+
+        assert pending_data["id"] == order_id
+        assert pending_data["status"] == "pending"
+
+        assert set(pending_data) == {
+            "id",
+            "status",
+            "created_at",
+            "updated_at",
+            "status_history",
+        }
+
+        pending_history = pending_data["status_history"]
+
+        assert any(
+            entry["new_status"] == "pending"
+            for entry in pending_history
+        )
+
+        # 5. Administración confirma el pedido.
+        update_response = client.patch(
+            f"/api/admin/orders/{order_id}/status",
+            json={
+                "status": "confirmed",
+            },
+            headers=_auth_headers(auth_token),
+        )
+
+        assert update_response.status_code == 200
+
+        updated_data = update_response.get_json()["data"]
+
+        assert updated_data["status"] == "confirmed"
+
+        # 6. El mismo token permite consultar el nuevo estado.
+        confirmed_response = client.post(
+            "/api/orders/track",
+            json={
+                "tracking_token": tracking_token,
+            },
+        )
+
+        assert confirmed_response.status_code == 200
+
+        confirmed_data = confirmed_response.get_json()["data"]
+
+        assert confirmed_data["id"] == order_id
+        assert confirmed_data["status"] == "confirmed"
+
+        confirmed_history = confirmed_data["status_history"]
+
+        assert any(
+            entry["previous_status"] == "pending"
+            and entry["new_status"] == "confirmed"
+            for entry in confirmed_history
+        )
+
+        # La respuesta pública no debe revelar los datos del cliente.
+        serialized_tracking = confirmed_response.get_data(
+            as_text=True
+        )
+
+        assert "Cliente Flujo Completo" not in serialized_tracking
+        assert "3001234567" not in serialized_tracking
+        assert "Calle 10 # 25-30" not in serialized_tracking
+        assert "Prueba integral del catálogo B2B" not in (
+            serialized_tracking
+        )
+
+    finally:
+        if order_id is not None:
+            integration_session.expire_all()
+
+            persisted_order = integration_session.get(
+                Order,
+                order_id,
+            )
+
+            if persisted_order is not None:
+                integration_session.delete(
+                    persisted_order
+                )
+
+                integration_session.commit()
