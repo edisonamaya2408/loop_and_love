@@ -42,6 +42,11 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
     tracking_requests = []
     whatsapp_urls = []
     browser_errors = []
+    tracking_statuses = {
+        TRACKING_TOKEN: "pending",
+        "b" * 43: "confirmed",
+        "c" * 43: "cancelled",
+    }
 
     def fulfill_json(route, payload, status=200):
         route.fulfill(
@@ -215,7 +220,7 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
             },
             status=200,
         )
-
+    
     def handle_tracking(route):
         request = route.request
         payload = json.loads(request.post_data or "{}")
@@ -228,7 +233,9 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
             }
         )
 
-        if token != TRACKING_TOKEN:
+        status = tracking_statuses.get(token)
+
+        if status is None:
             fulfill_json(
                 route,
                 {
@@ -244,24 +251,37 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
             )
             return
 
+        history = [
+            {
+                "previous_status": None,
+                "new_status": "pending",
+                "changed_at": "2026-10-18T15:00:00+00:00",
+            }
+        ]
+
+        if status in {"confirmed", "cancelled"}:
+            history.append(
+                {
+                    "previous_status": "pending",
+                    "new_status": status,
+                    "changed_at": "2026-10-18T16:00:00+00:00",
+                }
+            )
+
         fulfill_json(
             route,
             {
                 "success": True,
                 "data": {
                     "id": ORDER_ID,
-                    "status": "pending",
+                    "status": status,
                     "created_at": "2026-10-18T15:00:00+00:00",
-                    "updated_at": "2026-10-18T15:00:00+00:00",
-                    "status_history": [
-                        {
-                            "previous_status": None,
-                            "new_status": "pending",
-                            "changed_at": (
-                                "2026-10-18T15:00:00+00:00"
-                            ),
-                        }
-                    ],
+                    "updated_at": (
+                        "2026-10-18T15:00:00+00:00"
+                        if status == "pending"
+                        else "2026-10-18T16:00:00+00:00"
+                    ),
+                    "status_history": history,
                 },
             },
         )
@@ -279,6 +299,20 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                 "</head><body>Destino simulado</body></html>"
             ),
         )
+
+    def click_tracking_submit(page):
+        """Centra el botón antes de pulsarlo para evitar el encabezado fijo."""
+        submit_button = page.locator("#order-tracking-submit")
+
+        submit_button.evaluate(
+            """element => element.scrollIntoView({
+                block: "center",
+                inline: "nearest",
+                behavior: "instant"
+            })"""
+        )
+
+        submit_button.click()
 
     try:
         with sync_playwright() as playwright:
@@ -325,6 +359,13 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                 )
 
                 page = context.new_page()
+
+                # Debe instalarse antes de navegar para controlar
+                # los setTimeout creados por el JavaScript del catálogo.
+                page.clock.install(
+                    time="2026-10-18T14:59:00Z"
+                )
+
                 page.set_default_timeout(8000)
 
                 page.on(
@@ -348,8 +389,15 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                 add_button = card.locator(
                     ".catalog-product-card__add"
                 )
-
+                
                 expect(add_button).to_be_visible()
+
+                # La página y los recursos iniciales ya cargaron.
+                # Ahora pausamos el reloj para controlar los temporizadores
+                # únicamente mediante fast_forward().
+                page.clock.pause_at(
+                    "2026-10-18T15:00:00Z"
+                )
 
                 # Agregar dos unidades del mismo producto.
                 add_button.click()
@@ -404,6 +452,18 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
 
                 expect(retry_button).to_be_visible()
 
+                # La advertencia con una acción de recuperación
+                # debe permanecer visible incluso después de 20 s.
+                page.clock.fast_forward(20_000)
+
+                expect(retry_button).to_be_visible()
+
+                expect(
+                    page.locator("#order-feedback")
+                ).to_contain_text(
+                    "No pudimos confirmar la respuesta del servidor."
+                )
+
                 with page.expect_popup() as popup_info:
                     retry_button.click()
 
@@ -423,6 +483,45 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                             ".catalog-order-feedback__summary"
                         )
                     ).to_be_visible()
+                    
+                    success_message = page.locator(
+                        "#order-feedback "
+                        ".catalog-order-feedback__text"
+                    )
+
+                    # A los 5.999 ms el mensaje debe seguir visible.
+                    page.clock.fast_forward(5999)
+
+                    expect(
+                        success_message
+                    ).to_be_visible()
+
+                    # Al completar los 6.000 ms se elimina solo el texto.
+                    page.clock.fast_forward(1)
+
+                    expect(
+                        success_message
+                    ).to_have_count(0)
+
+                    # La información útil debe seguir disponible.
+                    expect(
+                        page.locator(
+                            "#order-feedback "
+                            ".catalog-order-feedback__summary"
+                        )
+                    ).to_be_visible()
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-result"
+                        )
+                    ).to_be_visible()
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_be_hidden()
 
                     expect(
                         page.locator(
@@ -448,6 +547,155 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
 
                     # Dos solicitudes idénticas, una clave, un pedido.
                     assert len(order_requests) == 2
+                    
+                    # 1. Confirmar y cancelar deben mostrar una
+                    # instrucción específica para el cliente.
+                    tracking_scenarios = [
+                        (
+                            "b" * 43,
+                            "Confirmado",
+                            "La tienda confirmó tu pedido.",
+                        ),
+                        (
+                            "c" * 43,
+                            "Cancelado",
+                            "Este pedido figura como cancelado.",
+                        ),
+                    ]
+
+                    for token, expected_status, expected_guidance in (
+                        tracking_scenarios
+                    ):
+                        page.locator(
+                            "#order-tracking-token"
+                        ).fill(token)
+
+                        click_tracking_submit(page)
+
+                        expect(
+                            page.locator(
+                                "#order-tracking-result "
+                                ".catalog-order-tracking__status"
+                            )
+                        ).to_have_text(expected_status)
+
+                        expect(
+                            page.locator(
+                                "#order-tracking-result "
+                                ".catalog-order-tracking__guidance"
+                            )
+                        ).to_contain_text(expected_guidance)
+
+                        expect(
+                            page.locator(
+                                "#order-tracking-feedback"
+                            )
+                        ).to_contain_text(
+                            "Consulta completada correctamente."
+                        )
+
+                        # El aviso se elimina después de 6 s simulados.
+                        page.clock.fast_forward(6000)
+
+                        expect(
+                            page.locator(
+                                "#order-tracking-feedback"
+                            )
+                        ).to_be_hidden()
+
+                        # La información del pedido permanece visible.
+                        expect(
+                            page.locator(
+                                "#order-tracking-result"
+                            )
+                        ).to_be_visible()
+
+                    # 2. Un código inexistente debe generar un error.
+                    invalid_token = "z" * 43
+
+                    page.locator(
+                        "#order-tracking-token"
+                    ).fill(invalid_token)
+
+                    click_tracking_submit(page)
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_contain_text(
+                        "No encontramos un pedido con ese código."
+                    )
+
+                    # No se deben conservar datos del pedido anterior.
+                    expect(
+                        page.locator(
+                            "#order-tracking-result"
+                        )
+                    ).to_be_hidden()
+
+                    # Los errores de seguimiento desaparecen a los 8 s.
+                    page.clock.fast_forward(7999)
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_be_visible()
+
+                    page.clock.fast_forward(1)
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_be_hidden()
+
+                    # 3. Después de un error debe poder hacerse
+                    # una consulta válida y recuperar el resultado.
+                    page.locator(
+                        "#order-tracking-token"
+                    ).fill(TRACKING_TOKEN)
+
+                    click_tracking_submit(page)
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-result "
+                            ".catalog-order-tracking__status"
+                        )
+                    ).to_have_text("Pendiente")
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_contain_text(
+                        "Consulta completada correctamente."
+                    )
+
+                    page.clock.fast_forward(6000)
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-feedback"
+                        )
+                    ).to_be_hidden()
+
+                    expect(
+                        page.locator(
+                            "#order-tracking-result"
+                        )
+                    ).to_be_visible()
+
+                    # Consultar seguimiento nunca debe volver a crear
+                    # el pedido ni repetir el checkout.
+                    assert len(order_requests) == 2
+
+                    assert not browser_errors, (
+                        "Errores JavaScript:\n"
+                        + "\n".join(browser_errors)
+                    )
 
                     first = order_requests[0]
                     second = order_requests[1]
@@ -488,18 +736,40 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                     assert "Total:" in whatsapp_message
                     assert "Cliente Prueba E2E" in whatsapp_message
 
-                    # El token se envía en el cuerpo, no en la URL.
+                    
+                    # Todas las consultas deben enviar el token
+                    # en el cuerpo, nunca dentro de la URL.
                     assert tracking_requests
 
+                    expected_tracking_tokens = {
+                        TRACKING_TOKEN,
+                        "b" * 43,
+                        "c" * 43,
+                        "z" * 43,
+                    }
+
                     assert all(
+                        request["token"] in expected_tracking_tokens
+                        for request in tracking_requests
+                    )
+
+                    # Debe haberse consultado el pedido creado.
+                    assert any(
                         request["token"] == TRACKING_TOKEN
                         for request in tracking_requests
                     )
 
+                    # Ningún código de seguimiento debe aparecer en la URL.
                     assert all(
-                        TRACKING_TOKEN not in request["url"]
+                        request["token"] not in request["url"]
                         for request in tracking_requests
                     )
+
+                    assert all(
+                        not urlsplit(request["url"]).query
+                        for request in tracking_requests
+                    )
+
 
                     # Después de recargar, se recupera el seguimiento
                     # desde sessionStorage sin crear otro pedido.

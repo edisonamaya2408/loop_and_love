@@ -1871,6 +1871,10 @@ async function loadOrderTracking(token) {
         return;
     }
 
+    // No conservar los datos de una consulta anterior mientras
+    // se intenta consultar otro pedido.
+    clearOrderTrackingResult();
+
     orderTrackingState.submitting = true;
 
     if (tokenInput) {
