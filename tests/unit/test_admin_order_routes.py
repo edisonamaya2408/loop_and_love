@@ -44,6 +44,7 @@ class FakeOrderService:
                 address="Calle 10 # 25-30",
                 observations="Entregar mañana.",
                 status="pending",
+                tracking_token="a" * 43,
                 items=[
                     SimpleNamespace(
                         product_id=1,
@@ -87,6 +88,7 @@ class FakeOrderService:
                 address="Carrera 15 # 80-20",
                 observations=None,
                 status="confirmed",
+                tracking_token="b" * 43,
                 items=[
                     SimpleNamespace(
                         product_id=2,
@@ -405,6 +407,8 @@ def test_list_admin_orders_returns_orders_with_pagination(
         "data"
     ][0]
 
+    assert "tracking_token" not in first_order
+
     assert first_order["id"] == 15
 
     assert first_order["name"] == (
@@ -635,6 +639,8 @@ def test_get_admin_order_returns_order(
     assert order["status"] == (
         "pending"
     )
+
+    assert order["tracking_token"] == "a" * 43
 
     assert (
         order["status_history"]

@@ -1317,6 +1317,62 @@
 }
 
 /* ==================================================
+   ORDER TRACKING CODE
+================================================== */
+
+.admin-orders-tracking__description {
+    margin: 0;
+    color: var(--admin-text-soft);
+    font-size: 0.84rem;
+    line-height: 1.6;
+}
+
+.admin-orders-tracking__token {
+    display: block;
+    min-width: 0;
+    padding: 0.9rem;
+    overflow-wrap: anywhere;
+    user-select: all;
+
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+
+    background: var(--admin-surface-soft);
+    color: var(--admin-brown);
+
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.admin-orders-tracking__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.admin-orders-tracking__feedback {
+    margin: 0;
+    color: var(--admin-text-soft);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.admin-orders-tracking__feedback--error {
+    color: #A52F36;
+}
+
+@media (max-width: 640px) {
+    .admin-orders-tracking__actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-orders-tracking__actions .admin-orders-button {
+        width: 100%;
+    }
+}
+
+/* ==================================================
    ORDER STATUS HISTORY
 ================================================== */
 

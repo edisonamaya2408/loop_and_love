@@ -40,6 +40,11 @@ def _order_to_dict(order):
         "address": order.address,
         "observations": order.observations,
         "status": order.status,
+        "tracking_token": getattr(
+            order,
+            "tracking_token",
+            None,
+        ),
         "status_history": [
             {
                 "id": history.id,

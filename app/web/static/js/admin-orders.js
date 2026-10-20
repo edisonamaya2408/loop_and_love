@@ -18,6 +18,21 @@ function getNextOrderStatus(status) {
     return ORDER_NEXT_STATUS[status] || null;
 }
 
+const ORDER_TRACKING_TOKEN_PATTERN =
+    /^[A-Za-z0-9_-]{43}$/;
+
+
+function getOrderTrackingToken(order) {
+    const token =
+        typeof order?.tracking_token === "string"
+            ? order.tracking_token.trim()
+            : "";
+
+    return ORDER_TRACKING_TOKEN_PATTERN.test(token)
+        ? token
+        : "";
+}
+
 const adminOrdersState = {
     page: 1,
     perPage: 12,
@@ -281,6 +296,160 @@ function setOrderDetailMessage(
 
     element.hidden = false;
     element.textContent = message;
+}
+
+
+function setOrderTrackingFeedback(
+    message,
+    type = "success"
+) {
+    const feedback = getOrderDetailElement(
+        "admin-order-tracking-feedback"
+    );
+
+    if (!feedback) {
+        return;
+    }
+
+    feedback.className =
+        "admin-orders-tracking__feedback";
+
+    if (message && type === "error") {
+        feedback.classList.add(
+            "admin-orders-tracking__feedback--error"
+        );
+    }
+
+    feedback.textContent = message || "";
+    feedback.hidden = !message;
+}
+
+
+async function copyOrderTrackingToken() {
+    const order = adminOrdersState.currentOrder;
+    const token = getOrderTrackingToken(order);
+
+    if (!token) {
+        setOrderTrackingFeedback(
+            "Este pedido no tiene un código de seguimiento válido.",
+            "error"
+        );
+
+        return;
+    }
+
+    try {
+        if (
+            window.isSecureContext &&
+            navigator.clipboard?.writeText
+        ) {
+            await navigator.clipboard.writeText(token);
+        } else {
+            // Alternativa para navegadores sin Clipboard API.
+            const textarea =
+                document.createElement("textarea");
+
+            textarea.value = token;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            let copied = false;
+
+            try {
+                copied = document.execCommand("copy");
+            } finally {
+                textarea.remove();
+            }
+
+            if (!copied) {
+                throw new Error(
+                    "No fue posible copiar el código."
+                );
+            }
+        }
+
+        setOrderTrackingFeedback(
+            "Código copiado. Ya puedes enviárselo al cliente."
+        );
+    } catch {
+        setOrderTrackingFeedback(
+            "No se pudo copiar automáticamente. Selecciona el código visible y cópialo manualmente.",
+            "error"
+        );
+    }
+}
+
+
+function shareOrderTrackingByWhatsApp(order) {
+    if (!order || !order.id) {
+        return;
+    }
+
+    const token = getOrderTrackingToken(order);
+
+    if (!token) {
+        setOrderTrackingFeedback(
+            "Este pedido no tiene un código de seguimiento válido.",
+            "error"
+        );
+
+        return;
+    }
+
+    const number =
+        normalizeAdminCustomerWhatsAppNumber(
+            order.phone
+        );
+
+    if (!isValidAdminCustomerWhatsAppNumber(number)) {
+        setOrderTrackingFeedback(
+            "El teléfono del cliente no tiene un formato válido para WhatsApp. Copia el código y compártelo manualmente.",
+            "error"
+        );
+
+        return;
+    }
+
+    const trackingUrl =
+        `${window.location.origin}/#pedido`;
+
+    const message = [
+        `Hola ${order.name || "cliente"}, te compartimos nuevamente el código de seguimiento de tu pedido #${order.id} de Loop & Love.`,
+        "",
+        `Consulta el estado aquí: ${trackingUrl}`,
+        "",
+        `Código de seguimiento: ${token}`,
+        "",
+        "En la sección de seguimiento, pega el código y pulsa «Consultar estado»."
+    ].join("\n");
+
+    const whatsappUrl =
+        `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+
+    const whatsappWindow = window.open(
+        whatsappUrl,
+        "_blank"
+    );
+
+    if (!whatsappWindow) {
+        setOrderTrackingFeedback(
+            "El navegador bloqueó la ventana de WhatsApp. Permite ventanas emergentes e inténtalo nuevamente.",
+            "error"
+        );
+
+        return;
+    }
+
+    // Evitar que la ventana de WhatsApp acceda a la página de origen.
+    whatsappWindow.opener = null;
+
+    setOrderTrackingFeedback(
+        "Se abrió WhatsApp con el código y las instrucciones de seguimiento."
+    );
 }
 
 
@@ -905,6 +1074,21 @@ function renderOrderDetail(
             "admin-order-detail-status"
         );
 
+    const trackingTokenElement =
+        getOrderDetailElement(
+            "admin-order-tracking-token"
+        );
+
+    const copyTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-copy-button"
+        );
+
+    const shareTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-whatsapp-button"
+        );
+
     const total =
         getOrderDetailElement(
             "admin-order-detail-total"
@@ -979,6 +1163,26 @@ function renderOrderDetail(
     updateOrderStatusActions(
         order.status
     );
+
+    const trackingToken =
+        getOrderTrackingToken(order);
+
+    if (trackingTokenElement) {
+        trackingTokenElement.textContent =
+            trackingToken || "No disponible";
+    }
+
+    if (copyTrackingButton) {
+        copyTrackingButton.disabled =
+            !trackingToken;
+    }
+
+    if (shareTrackingButton) {
+        shareTrackingButton.disabled =
+            !trackingToken;
+    }
+
+    setOrderTrackingFeedback("");
 
     renderOrderStatusHistory(
         order.status_history,
@@ -2416,6 +2620,16 @@ function setupOrderDetailModal() {
             "admin-order-whatsapp-button"
         );
 
+    const copyTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-copy-button"
+        );
+
+    const shareTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-whatsapp-button"
+        );
+
     const backdrop =
         document.querySelector(
             "[data-order-detail-close]"
@@ -2466,6 +2680,26 @@ function setupOrderDetailModal() {
             "click",
             () => {
                 contactCustomerByWhatsApp(
+                    adminOrdersState.currentOrder
+                );
+            }
+        );
+    }
+
+    if (copyTrackingButton) {
+        copyTrackingButton.addEventListener(
+            "click",
+            () => {
+                void copyOrderTrackingToken();
+            }
+        );
+    }
+
+    if (shareTrackingButton) {
+        shareTrackingButton.addEventListener(
+            "click",
+            () => {
+                shareOrderTrackingByWhatsApp(
                     adminOrdersState.currentOrder
                 );
             }

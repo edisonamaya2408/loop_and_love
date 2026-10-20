@@ -516,6 +516,31 @@ def test_admin_orders_page_includes_customer_whatsapp_action(
         in body
     )
 
+    assert (
+        'id="admin-order-tracking-token"'
+        in body
+    )
+
+    assert (
+        'id="admin-order-tracking-copy-button"'
+        in body
+    )
+
+    assert (
+        'id="admin-order-tracking-whatsapp-button"'
+        in body
+    )
+
+    assert (
+        "Copiar código"
+        in body
+    )
+
+    assert (
+        "Compartir seguimiento por WhatsApp"
+        in body
+    )
+
 
 def test_admin_orders_whatsapp_uses_customer_phone_not_business_number(
     monkeypatch,
@@ -1517,3 +1542,30 @@ def test_admin_order_history_displays_relative_time_and_current_status(
 
     assert ".admin-orders-status-current-summary" in css
     assert ".admin-orders-status-history__relative" in css
+
+
+def test_admin_orders_js_includes_tracking_actions(
+    monkeypatch,
+):
+    app = _create_web_app(
+        monkeypatch,
+        users=[
+            _admin_user()
+        ],
+    )
+
+    client = app.test_client()
+
+    response = client.get(
+        "/static/js/admin-orders.js"
+    )
+
+    assert response.status_code == 200
+
+    body = response.get_data(as_text=True)
+
+    assert "getOrderTrackingToken" in body
+    assert "copyOrderTrackingToken" in body
+    assert "shareOrderTrackingByWhatsApp" in body
+    assert "ORDER_TRACKING_TOKEN_PATTERN" in body
+    assert "navigator.clipboard" in body
