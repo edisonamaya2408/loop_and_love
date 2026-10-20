@@ -15,6 +15,9 @@ from app.domain.exceptions import (
 from app.domain.entities.order import (
     ORDER_STATUS_PENDING,
     ORDER_STATUS_CONFIRMED,
+    ORDER_STATUS_PREPARING,
+    ORDER_STATUS_SHIPPED,
+    ORDER_STATUS_DELIVERED,
     ORDER_STATUS_CANCELLED,
     OrderEntity,
     OrderItemEntity,
@@ -361,17 +364,31 @@ class OrderService:
                 "El pedido ya tiene ese estado."
             )
 
-        if current_status != ORDER_STATUS_PENDING:
-            raise ValueError(
-                "Solo se pueden modificar pedidos pendientes."
-            )
+        allowed_transitions = {
+            ORDER_STATUS_PENDING: {
+                ORDER_STATUS_CONFIRMED,
+                ORDER_STATUS_CANCELLED,
+            },
+            ORDER_STATUS_CONFIRMED: {
+                ORDER_STATUS_PREPARING,
+            },
+            ORDER_STATUS_PREPARING: {
+                ORDER_STATUS_SHIPPED,
+            },
+            ORDER_STATUS_SHIPPED: {
+                ORDER_STATUS_DELIVERED,
+            },
+            ORDER_STATUS_DELIVERED: set(),
+            ORDER_STATUS_CANCELLED: set(),
+        }
 
-        if clean_status not in {
-            ORDER_STATUS_CONFIRMED,
-            ORDER_STATUS_CANCELLED,
-        }:
+        if clean_status not in allowed_transitions.get(
+            current_status,
+            set(),
+        ):
             raise ValueError(
-                "El estado solicitado no es válido."
+                "La transición solicitada no está permitida: "
+                f"{current_status} → {clean_status}."
             )
 
         if (
@@ -727,9 +744,12 @@ class OrderService:
         )
 
         allowed_statuses = {
-            "pending",
-            "confirmed",
-            "cancelled",
+            ORDER_STATUS_PENDING,
+            ORDER_STATUS_CONFIRMED,
+            ORDER_STATUS_PREPARING,
+            ORDER_STATUS_SHIPPED,
+            ORDER_STATUS_DELIVERED,
+            ORDER_STATUS_CANCELLED,
         }
 
         if normalized not in allowed_statuses:

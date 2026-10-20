@@ -669,6 +669,23 @@
     color: var(--color-rose-deep);
 }
 
+
+.catalog-order-tracking__status--preparing {
+    background: #EAE4F7;
+    color: #604A8D;
+}
+
+.catalog-order-tracking__status--shipped {
+    background: #DDF0F3;
+    color: #286875;
+}
+
+.catalog-order-tracking__status--delivered {
+    background: #DCEFE1;
+    color: #286344;
+}
+
+
 .catalog-order-tracking__result h5 {
     margin: 0.35rem 0 0;
     color: var(--color-brown);

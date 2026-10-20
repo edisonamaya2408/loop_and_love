@@ -1302,6 +1302,9 @@
               "enum": [
                 "pending",
                 "confirmed",
+                "preparing",
+                "shipped",
+                "delivered",
                 "cancelled"
               ]
             },
@@ -1444,7 +1447,11 @@
                   "status": {
                     "type": "string",
                     "enum": [
+                      "pending",
                       "confirmed",
+                      "preparing",
+                      "shipped",
+                      "delivered",
                       "cancelled"
                     ]
                   }
@@ -2622,6 +2629,9 @@
             "enum": [
               "pending",
               "confirmed",
+              "preparing",
+              "shipped",
+              "delivered",
               "cancelled"
             ],
             "nullable": true
@@ -2631,6 +2641,9 @@
             "enum": [
               "pending",
               "confirmed",
+              "preparing",
+              "shipped",
+              "delivered",
               "cancelled"
             ]
           },
@@ -2671,6 +2684,9 @@
                 "enum": [
                   "pending",
                   "confirmed",
+                  "preparing",
+                  "shipped",
+                  "delivered",
                   "cancelled"
                 ]
               },
@@ -2741,6 +2757,9 @@
             "enum": [
               "pending",
               "confirmed",
+              "preparing",
+              "shipped",
+              "delivered",
               "cancelled"
             ]
           },
@@ -2790,6 +2809,9 @@
             "enum": [
               "pending",
               "confirmed",
+              "preparing",
+              "shipped",
+              "delivered",
               "cancelled"
             ],
             "nullable": true
@@ -2799,6 +2821,9 @@
             "enum": [
               "pending",
               "confirmed",
+              "preparing",
+              "shipped",
+              "delivered",
               "cancelled"
             ]
           },

@@ -21,6 +21,9 @@ class OrderStatusHistory(db.Model):
             OR previous_status IN (
                 'pending',
                 'confirmed',
+                'preparing',
+                'shipped',
+                'delivered',
                 'cancelled'
             )
             """,
@@ -31,6 +34,9 @@ class OrderStatusHistory(db.Model):
             new_status IN (
                 'pending',
                 'confirmed',
+                'preparing',
+                'shipped',
+                'delivered',
                 'cancelled'
             )
             """,

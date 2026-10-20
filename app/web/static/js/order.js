@@ -22,6 +22,9 @@ const ORDER_TRACKING_TOKEN_PATTERN =
 const ORDER_TRACKING_STATUS_LABELS = {
     pending: "Pendiente",
     confirmed: "Confirmado",
+    preparing: "En preparación",
+    shipped: "Enviado",
+    delivered: "Entregado",
     cancelled: "Cancelado",
 };
 
@@ -1664,6 +1667,26 @@ function getOrderTrackingGuidance(status) {
                 "Este pedido figura como cancelado. Si tienes " +
                 "dudas o deseas realizar otro pedido, contacta " +
                 "a la tienda antes de enviarlo nuevamente."
+            );
+
+        case "preparing":
+            return (
+                "La tienda está preparando tu pedido. Si necesitas " +
+                "coordinar detalles de entrega, continúa la conversación " +
+                "por WhatsApp."
+            );
+
+        case "shipped":
+            return (
+                "Tu pedido figura como enviado. Contacta a la tienda " +
+                "por WhatsApp para confirmar los detalles y el tiempo " +
+                "estimado de entrega."
+            );
+
+        case "delivered":
+            return (
+                "El pedido figura como entregado. Si no lo has recibido " +
+                "o hay alguna novedad, comunícate con la tienda por WhatsApp."
             );
 
         default:

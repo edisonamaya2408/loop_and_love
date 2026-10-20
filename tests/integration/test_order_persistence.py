@@ -278,6 +278,62 @@ def test_create_order_persists_header_items_and_total(
             Decimal("75001.50")
         )
 
+        # Verificar la persistencia de todas las transiciones
+        # del ciclo de preparación y entrega.
+        expected_transitions = (
+            "confirmed",
+            "preparing",
+            "shipped",
+            "delivered",
+        )
+
+        for expected_status in expected_transitions:
+            updated_order = service.update_admin_order_status(
+                order.id,
+                expected_status,
+            )
+
+            assert updated_order is not None
+            assert updated_order.status == expected_status
+
+        integration_session.expire_all()
+
+        persisted_history = (
+            integration_session.query(
+                OrderStatusHistory
+            )
+            .filter(
+                OrderStatusHistory.order_id == order.id
+            )
+            .order_by(
+                OrderStatusHistory.changed_at,
+                OrderStatusHistory.id,
+            )
+            .all()
+        )
+
+        assert [
+            entry.new_status
+            for entry in persisted_history
+        ] == [
+            "pending",
+            "confirmed",
+            "preparing",
+            "shipped",
+            "delivered",
+        ]
+
+        assert [
+            entry.previous_status
+            for entry in persisted_history
+        ] == [
+            None,
+            "pending",
+            "confirmed",
+            "preparing",
+            "shipped",
+        ]
+
     finally:
         persisted_order = (
             integration_session.get(

@@ -9,6 +9,9 @@ from app.domain.entities.order_status_history import (
 
 ORDER_STATUS_PENDING = "pending"
 ORDER_STATUS_CONFIRMED = "confirmed"
+ORDER_STATUS_PREPARING = "preparing"
+ORDER_STATUS_SHIPPED = "shipped"
+ORDER_STATUS_DELIVERED = "delivered"
 ORDER_STATUS_CANCELLED = "cancelled"
 
 

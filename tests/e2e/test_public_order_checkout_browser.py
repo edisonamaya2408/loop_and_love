@@ -46,6 +46,9 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
         TRACKING_TOKEN: "pending",
         "b" * 43: "confirmed",
         "c" * 43: "cancelled",
+        "d" * 43: "preparing",
+        "e" * 43: "shipped",
+        "f" * 43: "delivered",
     }
 
     def fulfill_json(route, payload, status=200):

@@ -1,5 +1,22 @@
 "use strict";
 
+const ORDER_NEXT_STATUS = Object.freeze({
+    pending: "confirmed",
+    confirmed: "preparing",
+    preparing: "shipped",
+    shipped: "delivered",
+});
+
+const ORDER_NEXT_STATUS_LABELS = Object.freeze({
+    confirmed: "Confirmar pedido",
+    preparing: "Iniciar preparación",
+    shipped: "Marcar como enviado",
+    delivered: "Marcar como entregado",
+});
+
+function getNextOrderStatus(status) {
+    return ORDER_NEXT_STATUS[status] || null;
+}
 
 const adminOrdersState = {
     page: 1,
@@ -457,6 +474,9 @@ function getStatusLabel(
     const labels = {
         pending: "Pendiente",
         confirmed: "Confirmado",
+        preparing: "En preparación",
+        shipped: "Enviado",
+        delivered: "Entregado",
         cancelled: "Cancelado",
     };
 
@@ -1106,46 +1126,42 @@ function setOrderStatusButtonsDisabled(
 }
 
 
-function updateOrderStatusActions(
-    status
-) {
-    const actions =
-        getOrderDetailElement(
-            "admin-order-status-actions"
-        );
+function updateOrderStatusActions(status) {
+    const actions = getOrderDetailElement(
+        "admin-order-status-actions"
+    );
 
-    const confirmButton =
-        getOrderDetailElement(
-            "admin-order-confirm-button"
-        );
+    const confirmButton = getOrderDetailElement(
+        "admin-order-confirm-button"
+    );
 
-    const cancelButton =
-        getOrderDetailElement(
-            "admin-order-cancel-button"
-        );
+    const cancelButton = getOrderDetailElement(
+        "admin-order-cancel-button"
+    );
 
-    const isPending =
-        status === "pending";
+    const nextStatus = getNextOrderStatus(status);
+    const canCancel = status === "pending";
+    const hasActions = Boolean(nextStatus || canCancel);
 
     if (actions) {
-        actions.hidden =
-            !isPending;
+        actions.hidden = !hasActions;
     }
 
     if (confirmButton) {
-        confirmButton.hidden =
-            !isPending;
+        confirmButton.hidden = !nextStatus;
+
+        if (nextStatus) {
+            confirmButton.textContent =
+                ORDER_NEXT_STATUS_LABELS[nextStatus];
+        }
     }
 
     if (cancelButton) {
-        cancelButton.hidden =
-            !isPending;
+        cancelButton.hidden = !canCancel;
     }
 
-    if (!isPending) {
-        setOrderStatusButtonsDisabled(
-            false
-        );
+    if (!hasActions) {
+        setOrderStatusButtonsDisabled(false);
     }
 }
 
@@ -1175,9 +1191,22 @@ async function updateOrderStatus(
     const order =
         adminOrdersState.currentOrder;
 
+    const expectedNextStatus = order
+        ? getNextOrderStatus(order.status)
+        : null;
+
+    const isAllowedCancellation = Boolean(
+        order &&
+        order.status === "pending" &&
+        status === "cancelled"
+    );
+
     if (
         !order ||
-        order.status !== "pending"
+        (
+            status !== expectedNextStatus &&
+            !isAllowedCancellation
+        )
     ) {
         return;
     }
@@ -1299,13 +1328,14 @@ async function updateOrderStatus(
         adminOrdersState.updatingStatus =
             false;
 
+        const currentStatus =
+            adminOrdersState.currentOrder?.status;
+
         if (
-            adminOrdersState.currentOrder?.status ===
-            "pending"
+            currentStatus === "pending" ||
+            getNextOrderStatus(currentStatus)
         ) {
-            setOrderStatusButtonsDisabled(
-                false
-            );
+            setOrderStatusButtonsDisabled(false);
         }
 
     }
@@ -2402,13 +2432,16 @@ function setupOrderDetailModal() {
 
 
     if (confirmButton) {
-
         confirmButton.addEventListener(
             "click",
             () => {
-                updateOrderStatus(
-                    "confirmed"
+                const nextStatus = getNextOrderStatus(
+                    adminOrdersState.currentOrder?.status
                 );
+
+                if (nextStatus) {
+                    updateOrderStatus(nextStatus);
+                }
             }
         );
     }
@@ -2476,13 +2509,14 @@ function applyOrderFiltersFromQueryString() {
     }
 
 
-    const validStatuses = new Set(
-        [
-            "pending",
-            "confirmed",
-            "cancelled",
-        ]
-    );
+    const validStatuses = new Set([
+        "pending",
+        "confirmed",
+        "preparing",
+        "shipped",
+        "delivered",
+        "cancelled",
+    ]);
 
 
     if (

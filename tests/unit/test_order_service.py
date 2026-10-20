@@ -752,7 +752,7 @@ def test_update_admin_order_status_rejects_already_confirmed_order():
 
     with pytest.raises(
         ValueError,
-        match="Solo se pueden modificar pedidos pendientes",
+        match="transición solicitada no está permitida",
     ):
         service.update_admin_order_status(
             15,
@@ -811,6 +811,9 @@ def test_list_admin_orders_rejects_invalid_status(
     [
         "pending",
         "confirmed",
+        "preparing",
+        "shipped",
+        "delivered",
         "cancelled",
     ],
 )
@@ -837,6 +840,97 @@ def test_list_admin_orders_accepts_valid_statuses(
         }
     ]
 
+
+@pytest.mark.parametrize(
+    ("current_status", "requested_status"),
+    [
+        ("confirmed", "preparing"),
+        ("preparing", "shipped"),
+        ("shipped", "delivered"),
+    ],
+)
+def test_update_admin_order_status_allows_next_fulfillment_step(
+    current_status,
+    requested_status,
+):
+    current_order = SimpleNamespace(
+        id=15,
+        status=current_status,
+    )
+
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    repository.get_by_id = (
+        lambda order_id:
+        current_order
+        if order_id == 15
+        else None
+    )
+
+    repository.update_status = (
+        lambda order_id, status, *, actor_id=None,
+        actor_name=None, actor_email=None:
+        SimpleNamespace(
+            id=order_id,
+            status=status,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            actor_email=actor_email,
+        )
+    )
+
+    result = service.update_admin_order_status(
+        15,
+        requested_status,
+    )
+
+    assert result.id == 15
+    assert result.status == requested_status
+
+
+@pytest.mark.parametrize(
+    ("current_status", "requested_status"),
+    [
+        ("pending", "preparing"),
+        ("confirmed", "shipped"),
+        ("preparing", "delivered"),
+        ("shipped", "cancelled"),
+        ("delivered", "cancelled"),
+        ("cancelled", "confirmed"),
+    ],
+)
+def test_update_admin_order_status_rejects_skipping_or_terminal_transitions(
+    current_status,
+    requested_status,
+):
+    current_order = SimpleNamespace(
+        id=15,
+        status=current_status,
+    )
+
+    service, repository = _admin_service(
+        paginated_orders=[],
+        paginated_total=0,
+    )
+
+    repository.get_by_id = (
+        lambda order_id:
+        current_order
+        if order_id == 15
+        else None
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="transición solicitada no está permitida",
+    ):
+        service.update_admin_order_status(
+            15,
+            requested_status,
+        )
 
 
 def test_create_order_is_idempotent_for_same_key_and_payload():

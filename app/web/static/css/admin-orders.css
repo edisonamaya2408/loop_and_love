@@ -460,6 +460,22 @@
 }
 
 
+.admin-orders-status--preparing {
+    background: #EAE4F7;
+    color: #604A8D;
+}
+
+.admin-orders-status--shipped {
+    background: #DDF0F3;
+    color: #286875;
+}
+
+.admin-orders-status--delivered {
+    background: #DCEFE1;
+    color: #286344;
+}
+
+
 .admin-orders-date {
     color:
         var(--admin-text-soft);
