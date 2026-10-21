@@ -504,6 +504,41 @@ function buildOrderStatusWhatsAppMessage(order) {
 }
 
 
+async function recordOrderStatusNotificationPrepared(
+    orderId
+) {
+    const messageElement = getOrderDetailElement(
+        "admin-order-detail-message"
+    );
+
+    try {
+        const response = await adminFetch(
+            `/api/admin/orders/${encodeURIComponent(
+                orderId
+            )}/status-notification/prepared`,
+            {
+                method: "POST",
+            }
+        );
+
+        const data = await parseJsonSafely(response);
+
+        if (!response.ok || data?.success !== true) {
+            throw new Error(
+                data?.error?.message
+                || "No fue posible registrar la preparación de la notificación."
+            );
+        }
+
+    } catch (error) {
+        setOrderDetailMessage(
+            messageElement,
+            "WhatsApp se abrió, pero no fue posible registrar la preparación de la notificación en la auditoría."
+        );
+    }
+}
+
+
 function notifyOrderStatusByWhatsApp(order) {
     if (!order || !order.id) {
         return;
@@ -569,6 +604,10 @@ function notifyOrderStatusByWhatsApp(order) {
     setOrderDetailMessage(
         messageElement,
         "Se abrió WhatsApp con la actualización del pedido. Revisa el mensaje y pulsa Enviar para notificar al cliente."
+    );
+
+    void recordOrderStatusNotificationPrepared(
+        order.id
     );
 }
 

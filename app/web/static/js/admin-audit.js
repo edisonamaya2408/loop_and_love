@@ -66,6 +66,7 @@ function auditActionLabel(action) {
         "order.cancelled": "Pedido cancelado",
         "order.status_changed": "Estado de pedido cambiado",
         "order.tracking_token_rotated": "Código de seguimiento regenerado",
+        "order.whatsapp_notification_prepared": "Actualización por WhatsApp preparada",
     };
 
     return labels[action] || action || "Operación desconocida";
@@ -316,13 +317,18 @@ function renderAuditDetails(details, requestId) {
     const isTrackingTokenRotation =
         safeDetails.tracking_token_rotated === true;
 
+    const isWhatsAppNotificationPrepared =
+        safeDetails.whatsapp_notification_prepared === true;
+
     const summary = document.createElement("summary");
 
     summary.textContent = isTrackingTokenRotation
         ? "Ver detalles de regeneración"
-        : changeCount > 0
-            ? `Ver cambios (${changeCount})`
-            : "Ver detalles";
+        : isWhatsAppNotificationPrepared
+            ? "Ver detalles de notificación"
+            : changeCount > 0
+                ? `Ver cambios (${changeCount})`
+                : "Ver detalles";
 
     const content = document.createElement("div");
     content.className = "admin-audit-details__content";
@@ -336,6 +342,24 @@ function renderAuditDetails(details, requestId) {
             + "en la auditoría."
         );
 
+    } else if (isWhatsAppNotificationPrepared) {
+        const currentStatus = safeDetails.status;
+
+        const statusLabel = (
+            typeof currentStatus === "string"
+                ? AUDIT_STATUS_LABELS[currentStatus]
+                || currentStatus
+                : "No disponible"
+        );
+
+        appendAuditNote(
+            content,
+            "Se preparó una actualización por WhatsApp "
+            + `para el estado «${statusLabel}». `
+            + "La auditoría registra la preparación de la "
+            + "comunicación, pero no confirma que el mensaje "
+            + "se haya enviado o recibido."
+        );
     } else if (changeCount > 0) {
         content.append(
             renderAuditChangeTable(changes)

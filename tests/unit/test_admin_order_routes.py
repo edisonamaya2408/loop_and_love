@@ -1070,3 +1070,54 @@ def test_list_admin_orders_does_not_include_status_history(
         "status_history"
         not in first_order
     )
+
+
+def test_status_notification_prepared_requires_authentication(
+    monkeypatch,
+):
+    app, _ = _create_test_app(monkeypatch)
+
+    response = app.test_client().post(
+        "/api/admin/orders/15/status-notification/prepared"
+    )
+
+    assert response.status_code == 401
+
+
+def test_status_notification_prepared_returns_current_status(
+    monkeypatch,
+):
+    app, service = _create_test_app(monkeypatch)
+
+    _configure_valid_jwt(monkeypatch)
+
+    response = app.test_client().post(
+        "/api/admin/orders/15/status-notification/prepared",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()["data"]
+
+    assert data["id"] == 15
+    assert data["status"] == service.get_order(15).status
+    assert data["whatsapp_notification_prepared"] is True
+
+    assert "tracking_token" not in data
+    assert "phone" not in data
+
+
+def test_status_notification_prepared_returns_not_found(
+    monkeypatch,
+):
+    app, _ = _create_test_app(monkeypatch)
+
+    _configure_valid_jwt(monkeypatch)
+
+    response = app.test_client().post(
+        "/api/admin/orders/999/status-notification/prepared",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 404

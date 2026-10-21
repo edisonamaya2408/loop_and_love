@@ -52,6 +52,7 @@ class AdminAuditService:
         "order.cancelled",
         "order.status_changed",
         "order.tracking_token_rotated",
+        "order.whatsapp_notification_prepared",
     })
 
     def __init__(

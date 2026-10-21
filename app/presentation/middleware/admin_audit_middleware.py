@@ -576,6 +576,16 @@ def _build_mutation_description(
         ):
             action = "order.tracking_token_rotated"
 
+        elif (
+            request.method == "POST"
+            and len(tail) == 3
+            and tail[1:] == [
+                "status-notification",
+                "prepared",
+            ]
+        ):
+            action = "order.whatsapp_notification_prepared"
+
     if action is None:
         return None
 
@@ -625,6 +635,12 @@ def _build_mutation_description(
                 "new_status": status,
             }
 
+    elif action == "order.whatsapp_notification_prepared":
+        details = {
+            "whatsapp_notification_prepared": True,
+            "status": status,
+        }
+
     else:
         details = {}
 
@@ -642,11 +658,19 @@ def _build_mutation_description(
         False,
     )
 
-    if action == "order.tracking_token_rotated":
-        # El token es una credencial de seguimiento.
-        # Registramos la operación, pero no intentamos
-        # compararlo ni almacenarlo en los snapshots.
-        details["tracking_token_rotated"] = True
+    if action in {
+        "order.tracking_token_rotated",
+        "order.whatsapp_notification_prepared",
+    }:
+        if action == "order.tracking_token_rotated":
+            details = {
+                "tracking_token_rotated": True,
+            }
+        else:
+            details = {
+                "whatsapp_notification_prepared": True,
+                "status": status,
+            }
 
     elif snapshot_enabled:
         before = getattr(

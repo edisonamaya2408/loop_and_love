@@ -115,3 +115,18 @@ def test_admin_audit_script_uses_protected_read_only_endpoint(monkeypatch):
     assert "Ver detalles de regeneración" in body
     assert "El código anterior dejó de ser válido." in body
     assert "el código nuevo no se almacena" in body
+
+    assert (
+        "order.whatsapp_notification_prepared"
+        in body
+    )
+
+    assert (
+        "Actualización por WhatsApp preparada"
+        in body
+    )
+
+    assert (
+        "no confirma que el mensaje"
+        in body
+    )

@@ -224,6 +224,44 @@ def rotate_admin_order_tracking_token(
     ), 200
 
 
+
+@admin_orders_bp.post(
+    "/<int:order_id>/status-notification/prepared"
+)
+@jwt_required
+def record_admin_order_status_notification_prepared(
+    order_id,
+):
+    """Registra que se preparó una notificación por WhatsApp."""
+
+    order = (
+        _get_order_service()
+        .get_order(order_id)
+    )
+
+    if order is None:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "El pedido no existe.",
+                },
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "success": True,
+            "data": {
+                "id": order.id,
+                "status": order.status,
+                "whatsapp_notification_prepared": True,
+            },
+        }
+    ), 200
+
+
 @admin_orders_bp.patch("/<int:order_id>/status")
 @jwt_required
 def update_admin_order_status(

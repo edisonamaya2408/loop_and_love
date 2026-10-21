@@ -1619,3 +1619,13 @@ def test_admin_orders_js_includes_tracking_actions(
         "No se envía automáticamente"
         not in body
     )
+
+    assert (
+        "recordOrderStatusNotificationPrepared"
+        in body
+    )
+
+    assert (
+        "/status-notification/prepared"
+        in body
+    )

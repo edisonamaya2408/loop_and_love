@@ -1552,6 +1552,100 @@
         }
       }
     },
+    "/api/admin/orders/{order_id}/status-notification/prepared": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Registra que se preparó una notificación por WhatsApp, sin confirmar su envío.",
+        "operationId": "adminRecordOrderStatusNotificationPrepared",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            },
+            "description": "ID del pedido."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preparación registrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "status",
+                        "whatsapp_notification_prepared"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "confirmed",
+                            "preparing",
+                            "shipped",
+                            "delivered",
+                            "cancelled"
+                          ]
+                        },
+                        "whatsapp_notification_prepared": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "404": {
+            "description": "El pedido no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
     "/api/admin/users": {
       "get": {
         "operationId": "adminListUsers",
