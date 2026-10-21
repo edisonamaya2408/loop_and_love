@@ -546,6 +546,16 @@ def test_admin_orders_page_includes_customer_whatsapp_action(
         in body
     )
 
+    assert (
+        'id="admin-order-status-whatsapp-button"'
+        in body
+    )
+
+    assert (
+        "Notificar estado por WhatsApp"
+        in body
+    )
+
 
 def test_admin_orders_whatsapp_uses_customer_phone_not_business_number(
     monkeypatch,
@@ -1579,3 +1589,33 @@ def test_admin_orders_js_includes_tracking_actions(
     assert "admin-order-tracking-rotate-button" in body
 
     assert "/tracking-token/rotate" in body
+
+    assert (
+        "buildOrderStatusWhatsAppMessage"
+        in body
+    )
+
+    assert (
+        "notifyOrderStatusByWhatsApp"
+        in body
+    )
+
+    assert (
+        "ORDER_STATUS_WHATSAPP_GUIDANCE"
+        in body
+    )
+
+    assert (
+        "admin-order-status-whatsapp-button"
+        in body
+    )
+
+    assert (
+        "Código de seguimiento:"
+        in body
+    )
+
+    assert (
+        "No se envía automáticamente"
+        not in body
+    )

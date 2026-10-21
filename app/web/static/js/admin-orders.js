@@ -14,6 +14,26 @@ const ORDER_NEXT_STATUS_LABELS = Object.freeze({
     delivered: "Marcar como entregado",
 });
 
+const ORDER_STATUS_WHATSAPP_GUIDANCE = Object.freeze({
+    pending:
+        "Hemos recibido tu pedido y está pendiente de confirmación. Te informaremos cuando la tienda lo revise.",
+
+    confirmed:
+        "La tienda ha confirmado tu pedido. Puedes contactarnos por este medio para coordinar los detalles de entrega.",
+
+    preparing:
+        "Tu pedido está en preparación. Estamos trabajando para tenerlo listo.",
+
+    shipped:
+        "Tu pedido figura como enviado. Puedes contactarnos para coordinar la recepción y consultar los detalles de entrega.",
+
+    delivered:
+        "Nuestro registro indica que tu pedido fue entregado. Si tienes alguna novedad, responde a este mensaje.",
+
+    cancelled:
+        "Tu pedido figura como cancelado. Si tienes dudas sobre este estado, responde a este mensaje para que podamos ayudarte.",
+});
+
 function getNextOrderStatus(status) {
     return ORDER_NEXT_STATUS[status] || null;
 }
@@ -450,6 +470,105 @@ function shareOrderTrackingByWhatsApp(order) {
 
     setOrderTrackingFeedback(
         "Se abrió WhatsApp con el código y las instrucciones de seguimiento."
+    );
+}
+
+
+function buildOrderStatusWhatsAppMessage(order) {
+    const token = getOrderTrackingToken(order);
+
+    const guidance =
+        ORDER_STATUS_WHATSAPP_GUIDANCE[order.status] ||
+        "Puedes responder a este mensaje si necesitas más información.";
+
+    const trackingUrl =
+        `${window.location.origin}/#pedido`;
+
+    return [
+        `Hola ${order.name || "cliente"}, te compartimos una actualización de tu pedido #${order.id} de Loop & Love.`,
+        "",
+        `*Estado actual:* ${getStatusLabel(order.status)}`,
+        "",
+        guidance,
+        "",
+        `*Consulta el seguimiento:* ${trackingUrl}`,
+        "",
+        `*Código de seguimiento:* ${token}`,
+        "",
+        "Entra en la sección de seguimiento del catálogo, pega el código y pulsa «Consultar estado».",
+        "",
+        "Por seguridad, mantén privado tu código de seguimiento.",
+        "",
+        "Gracias por comprar en Loop & Love."
+    ].join("\n");
+}
+
+
+function notifyOrderStatusByWhatsApp(order) {
+    if (!order || !order.id) {
+        return;
+    }
+
+    const messageElement = getOrderDetailElement(
+        "admin-order-detail-message"
+    );
+
+    const token = getOrderTrackingToken(order);
+
+    if (!token) {
+        setOrderDetailMessage(
+            messageElement,
+            "Este pedido no tiene un código de seguimiento válido. Regenera el código antes de notificar al cliente."
+        );
+
+        return;
+    }
+
+    const number =
+        normalizeAdminCustomerWhatsAppNumber(
+            order.phone
+        );
+
+    if (!isValidAdminCustomerWhatsAppNumber(number)) {
+        setOrderDetailMessage(
+            messageElement,
+            "El teléfono del cliente no tiene un formato válido para WhatsApp."
+        );
+
+        return;
+    }
+
+    setOrderDetailMessage(
+        messageElement,
+        ""
+    );
+
+    const message = buildOrderStatusWhatsAppMessage(
+        order
+    );
+
+    const whatsappUrl =
+        `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+
+    const whatsappWindow = window.open(
+        whatsappUrl,
+        "_blank"
+    );
+
+    if (!whatsappWindow) {
+        setOrderDetailMessage(
+            messageElement,
+            "El navegador bloqueó la ventana de WhatsApp. Permite las ventanas emergentes e inténtalo nuevamente."
+        );
+
+        return;
+    }
+
+    whatsappWindow.opener = null;
+
+    setOrderDetailMessage(
+        messageElement,
+        "Se abrió WhatsApp con la actualización del pedido. Revisa el mensaje y pulsa Enviar para notificar al cliente."
     );
 }
 
@@ -2760,6 +2879,11 @@ function setupOrderDetailModal() {
             "admin-order-whatsapp-button"
         );
 
+    const statusWhatsAppButton =
+        getOrderDetailElement(
+            "admin-order-status-whatsapp-button"
+        );
+
     const copyTrackingButton =
         getOrderDetailElement(
             "admin-order-tracking-copy-button"
@@ -2820,6 +2944,17 @@ function setupOrderDetailModal() {
             "click",
             () => {
                 contactCustomerByWhatsApp(
+                    adminOrdersState.currentOrder
+                );
+            }
+        );
+    }
+
+    if (statusWhatsAppButton) {
+        statusWhatsAppButton.addEventListener(
+            "click",
+            () => {
+                notifyOrderStatusByWhatsApp(
                     adminOrdersState.currentOrder
                 );
             }
