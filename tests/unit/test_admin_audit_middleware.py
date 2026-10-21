@@ -240,6 +240,21 @@ def _create_audit_test_app():
                 },
             }
         ), 201
+    
+    @app.route("/api/admin/orders/<int:order_id>/tracking-token/rotate",methods=["POST"],)
+    def rotate_tracking_token(order_id):
+        return jsonify(
+            {
+                "success": True,
+                "data": {
+                    "id": order_id,
+                    "status": "pending",
+                    "tracking_token": (
+                        "secret-token-not-for-audit"
+                    ),
+                },
+            }
+        ), 200
 
     register_admin_audit(
         app
@@ -391,6 +406,14 @@ def test_audit_records_product_creation_and_redacts_password():
             "admin_user.deactivated",
             "admin_user",
             "4",
+        ),
+        (
+            "POST",
+            "/api/admin/orders/18/tracking-token/rotate",
+            None,
+            "order.tracking_token_rotated",
+            "order",
+            "18",
         ),
     ],
 )
@@ -645,3 +668,25 @@ def test_audit_marks_credential_change_without_storing_secret(
     assert secret not in serialized_details
     assert "password_hash" not in serialized_details
 
+
+def test_audit_tracking_token_rotation_never_stores_token():
+    app, repository = _create_audit_test_app()
+
+    response = app.test_client().post(
+        "/api/admin/orders/15/tracking-token/rotate"
+    )
+
+    assert response.status_code == 200
+    assert len(repository.events) == 1
+
+    event = repository.events[0]
+
+    assert event.action == "order.tracking_token_rotated"
+
+    serialized_details = json.dumps(
+        event.details,
+        ensure_ascii=False,
+    )
+
+    assert "secret-token-not-for-audit" not in serialized_details
+    assert event.details["tracking_token_rotated"] is True

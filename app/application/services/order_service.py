@@ -329,6 +329,34 @@ class OrderService:
             token
         )
 
+
+    def rotate_admin_order_tracking_token(
+        self,
+        order_id: int,
+    ) -> OrderEntity | None:
+        """Regenera el código público e invalida el anterior."""
+
+        self._validate_id(order_id)
+
+        # token_urlsafe(32) genera un token de 43 caracteres
+        # compatible con la validación del seguimiento público.
+        for attempt in range(3):
+            new_token = secrets.token_urlsafe(32)
+
+            try:
+                return self.repository.update_tracking_token(
+                    order_id,
+                    new_token,
+                )
+
+            except IntegrityError:
+                # Una colisión del índice único sería extraordinariamente
+                # improbable. Reintentamos con un token nuevo.
+                if attempt == 2:
+                    raise
+
+        return None
+
     
     def update_admin_order_status(
         self,

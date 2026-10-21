@@ -65,6 +65,7 @@ function auditActionLabel(action) {
         "order.confirmed": "Pedido confirmado",
         "order.cancelled": "Pedido cancelado",
         "order.status_changed": "Estado de pedido cambiado",
+        "order.tracking_token_rotated": "Código de seguimiento regenerado",
     };
 
     return labels[action] || action || "Operación desconocida";

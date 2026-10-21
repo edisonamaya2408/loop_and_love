@@ -253,6 +253,34 @@ class SQLAlchemyOrderRepository(OrderRepository):
             include_status_history=True,
         )
 
+
+    def update_tracking_token(
+        self,
+        order_id: int,
+        tracking_token: str,
+    ) -> OrderEntity | None:
+        model = (
+            self.session.query(Order)
+            .filter(
+                Order.id == order_id
+            )
+            .first()
+        )
+
+        if model is None:
+            return None
+
+        model.tracking_token = tracking_token
+
+        try:
+            self.session.commit()
+
+        except Exception:
+            self.session.rollback()
+            raise
+
+        return self.get_by_id(order_id)
+
     
     def update_status(
         self,

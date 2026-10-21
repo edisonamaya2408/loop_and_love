@@ -177,6 +177,53 @@ def get_admin_order(order_id):
     ), 200
 
 
+@admin_orders_bp.post(
+    "/<int:order_id>/tracking-token/rotate"
+)
+@jwt_required
+def rotate_admin_order_tracking_token(
+    order_id,
+):
+    """Regenera el código de seguimiento de un pedido."""
+
+    try:
+        order = (
+            _get_order_service()
+            .rotate_admin_order_tracking_token(
+                order_id
+            )
+        )
+
+    except ValueError as exc:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "INVALID_ORDER_ID",
+                    "message": str(exc),
+                },
+            }
+        ), 400
+
+    if order is None:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "ORDER_NOT_FOUND",
+                    "message": "El pedido no existe.",
+                },
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "success": True,
+            "data": _order_to_dict(order),
+        }
+    ), 200
+
+
 @admin_orders_bp.patch("/<int:order_id>/status")
 @jwt_required
 def update_admin_order_status(

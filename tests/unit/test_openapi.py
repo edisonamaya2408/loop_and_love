@@ -65,6 +65,7 @@ EXPECTED_OPERATIONS = {
     ),
     ("GET", "/api/admin/audit-logs"),
     ("POST", "/api/orders/track"),
+    ("POST", "/api/admin/orders/<int:order_id>/tracking-token/rotate",),
 }
 
 
@@ -93,6 +94,7 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/admin/orders/{order_id}/status",
     "/api/admin/audit-logs",
     "/api/orders/track",
+    "/api/admin/orders/{order_id}/tracking-token/rotate",
 }
 
 
@@ -274,6 +276,7 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/api/admin/orders/{order_id}",
         "/api/admin/orders/{order_id}/status",
         "/api/admin/audit-logs",
+        "/api/admin/orders/{order_id}/tracking-token/rotate",
     }
 
     for path in protected_paths:

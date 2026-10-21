@@ -541,6 +541,11 @@ def test_admin_orders_page_includes_customer_whatsapp_action(
         in body
     )
 
+    assert (
+        'id="admin-order-tracking-rotate-button"'
+        in body
+    )
+
 
 def test_admin_orders_whatsapp_uses_customer_phone_not_business_number(
     monkeypatch,
@@ -1569,3 +1574,8 @@ def test_admin_orders_js_includes_tracking_actions(
     assert "shareOrderTrackingByWhatsApp" in body
     assert "ORDER_TRACKING_TOKEN_PATTERN" in body
     assert "navigator.clipboard" in body
+    assert "rotateOrderTrackingToken" in body
+
+    assert "admin-order-tracking-rotate-button" in body
+
+    assert "/tracking-token/rotate" in body

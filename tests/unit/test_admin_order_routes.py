@@ -136,6 +136,25 @@ class FakeOrderService:
 
         return None
 
+    def rotate_admin_order_tracking_token(
+        self,
+        order_id,
+    ):
+        order = self.get_order(order_id)
+
+        if order is None:
+            return None
+
+        current_token = order.tracking_token
+
+        order.tracking_token = (
+            "z" * 43
+            if current_token != "z" * 43
+            else "y" * 43
+        )
+
+        return order
+
     def list_admin_orders(
         self,
         search=None,
@@ -944,6 +963,64 @@ def test_get_admin_order_returns_status_history(
             "changed_by_email": None,
         }
     ]
+
+def test_rotate_admin_order_tracking_token_requires_authentication(
+    monkeypatch,
+):
+    app, _ = _create_test_app(monkeypatch)
+
+    response = app.test_client().post(
+        "/api/admin/orders/15/tracking-token/rotate"
+    )
+
+    assert response.status_code == 401
+
+
+def test_rotate_admin_order_tracking_token_returns_new_token(
+    monkeypatch,
+):
+    app, service = _create_test_app(monkeypatch)
+
+    _configure_valid_jwt(monkeypatch)
+
+    old_token = service.get_order(15).tracking_token
+
+    response = app.test_client().post(
+        "/api/admin/orders/15/tracking-token/rotate",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 200
+
+    payload = response.get_json()
+
+    assert payload["success"] is True
+
+    new_token = payload["data"]["tracking_token"]
+
+    assert len(new_token) == 43
+    assert new_token != old_token
+    assert service.get_order(15).tracking_token == new_token
+
+
+def test_rotate_admin_order_tracking_token_returns_not_found(
+    monkeypatch,
+):
+    app, _ = _create_test_app(monkeypatch)
+
+    _configure_valid_jwt(monkeypatch)
+
+    response = app.test_client().post(
+        "/api/admin/orders/999/tracking-token/rotate",
+        headers=_auth_headers(),
+    )
+
+    assert response.status_code == 404
+
+    payload = response.get_json()
+
+    assert payload["success"] is False
+    assert payload["error"]["code"] == "ORDER_NOT_FOUND"
 
 def test_list_admin_orders_does_not_include_status_history(
     monkeypatch,

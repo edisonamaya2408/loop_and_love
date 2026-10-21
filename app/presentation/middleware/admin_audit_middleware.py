@@ -566,6 +566,16 @@ def _build_mutation_description(
             else:
                 action = "order.status_changed"
 
+        elif (
+            request.method == "POST"
+            and len(tail) == 3
+            and tail[1:] == [
+                "tracking-token",
+                "rotate",
+            ]
+        ):
+            action = "order.tracking_token_rotated"
+
     if action is None:
         return None
 
@@ -602,12 +612,18 @@ def _build_mutation_description(
             else fields.get("status")
         )
 
-        details = {
-            "previous_status": last_history.get(
-                "previous_status"
-            ),
-            "new_status": status,
-        }
+        if action == "order.tracking_token_rotated":
+            details = {
+                "tracking_token_rotated": True,
+            }
+
+        else:
+            details = {
+                "previous_status": last_history.get(
+                    "previous_status"
+                ),
+                "new_status": status,
+            }
 
     else:
         details = {}

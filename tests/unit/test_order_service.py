@@ -124,6 +124,21 @@ class FakeOrderRepository:
         )
 
 
+    def update_tracking_token(
+        self,
+        order_id,
+        tracking_token,
+    ):
+        order = self.get_by_id(order_id)
+
+        if order is None:
+            return None
+
+        order.tracking_token = tracking_token
+
+        return order
+
+
     def get_all_paginated(
         self,
         search=None,
@@ -1067,3 +1082,49 @@ def test_order_tracking_rejects_invalid_token():
     assert service.get_order_tracking("12345") is None
     assert service.get_order_tracking("../orders/1") is None
 
+
+def test_rotating_tracking_token_invalidates_previous_token():
+    service = _service()
+
+    order = service.create_order(
+        name="Cliente Seguimiento",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations=None,
+        items=[
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+    )
+
+    old_token = order.tracking_token
+
+    rotated_order = service.rotate_admin_order_tracking_token(
+        order.id
+    )
+
+    assert rotated_order is not None
+    assert rotated_order.id == order.id
+    assert len(rotated_order.tracking_token) == 43
+    assert rotated_order.tracking_token != old_token
+
+    assert service.get_order_tracking(old_token) is None
+
+    tracked_order = service.get_order_tracking(
+        rotated_order.tracking_token
+    )
+
+    assert tracked_order is not None
+    assert tracked_order.id == order.id
+
+
+def test_rotating_tracking_token_returns_none_for_missing_order():
+    service = _service()
+
+    assert (
+        service.rotate_admin_order_tracking_token(999)
+        is None
+    )

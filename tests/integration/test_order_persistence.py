@@ -323,6 +323,41 @@ def test_create_order_persists_header_items_and_total(
             "delivered",
         ]
 
+        # La regeneración debe persistir en la base de datos
+        # y dejar de reconocer el token anterior.
+        current_order = service.get_order(order.id)
+
+        old_tracking_token = current_order.tracking_token
+
+        rotated_order = (
+            service.rotate_admin_order_tracking_token(
+                order.id
+            )
+        )
+
+        assert rotated_order is not None
+        assert rotated_order.tracking_token != old_tracking_token
+
+        integration_session.expire_all()
+
+        rotated_persisted_order = integration_session.get(
+            Order,
+            order.id,
+        )
+
+        assert rotated_persisted_order.tracking_token == (
+            rotated_order.tracking_token
+        )
+
+        assert (
+            service.get_order_tracking(old_tracking_token)
+            is None
+        )
+
+        assert service.get_order_tracking(
+            rotated_order.tracking_token
+        ).id == order.id
+
         assert [
             entry.previous_status
             for entry in persisted_history

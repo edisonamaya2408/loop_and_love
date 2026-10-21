@@ -53,6 +53,7 @@ const adminOrdersState = {
     pendingNoticeDismissBound: false,
     detailFocusReturnElement: null,
     detailFocusOrderId: null,
+    rotatingTrackingToken: false,
 };
 
 
@@ -450,6 +451,128 @@ function shareOrderTrackingByWhatsApp(order) {
     setOrderTrackingFeedback(
         "Se abrió WhatsApp con el código y las instrucciones de seguimiento."
     );
+}
+
+
+async function rotateOrderTrackingToken() {
+    const order = adminOrdersState.currentOrder;
+
+    if (
+        !order ||
+        !order.id ||
+        adminOrdersState.rotatingTrackingToken
+    ) {
+        return;
+    }
+
+    const confirmed = window.confirm(
+        "¿Regenerar el código del pedido #" +
+        `${order.id}? El código anterior dejará de funcionar ` +
+        "y tendrás que compartir el nuevo con el cliente."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const previousToken = getOrderTrackingToken(order);
+
+    const rotateButton = getOrderDetailElement(
+        "admin-order-tracking-rotate-button"
+    );
+
+    adminOrdersState.rotatingTrackingToken = true;
+
+    if (rotateButton) {
+        rotateButton.disabled = true;
+    }
+
+    setOrderTrackingFeedback(
+        "Regenerando el código de seguimiento..."
+    );
+
+    try {
+        const response = await adminFetch(
+            `/api/admin/orders/${encodeURIComponent(
+                order.id
+            )}/tracking-token/rotate`,
+            {
+                method: "POST",
+            }
+        );
+
+        const data = await parseJsonSafely(response);
+
+        if (!response.ok) {
+            throw new Error(getErrorMessage(data));
+        }
+
+        const updatedOrder = data?.data;
+
+        if (
+            !updatedOrder ||
+            typeof updatedOrder !== "object"
+        ) {
+            throw new Error(
+                "El servidor no devolvió un pedido válido."
+            );
+        }
+
+        const newToken = getOrderTrackingToken(updatedOrder);
+
+        if (
+            !newToken ||
+            newToken === previousToken
+        ) {
+            // La petición pudo completarse, pero la respuesta
+            // no confirmó un token nuevo. Volvemos a consultar.
+            await loadOrderDetail(order.id);
+
+            throw new Error(
+                "No se pudo confirmar el nuevo código. " +
+                "Se volvió a consultar el pedido."
+            );
+        }
+
+        renderOrderDetail(updatedOrder);
+
+        updateOrderInCurrentPage(updatedOrder);
+
+        renderOrders(adminOrdersState.orders);
+
+        setOrderTrackingFeedback(
+            "Código regenerado correctamente. El anterior " +
+            "ya no funciona; comparte el nuevo con el cliente."
+        );
+
+    } catch (error) {
+        if (
+            error instanceof Error &&
+            error.message === "La sesión ha expirado."
+        ) {
+            return;
+        }
+
+        setOrderTrackingFeedback(
+            error instanceof Error
+                ? error.message
+                : "No fue posible regenerar el código.",
+            "error"
+        );
+
+    } finally {
+        adminOrdersState.rotatingTrackingToken = false;
+
+        const currentButton = getOrderDetailElement(
+            "admin-order-tracking-rotate-button"
+        );
+
+        if (currentButton) {
+            currentButton.disabled = !(
+                adminOrdersState.currentOrder?.id
+            );
+        }
+    }
 }
 
 
@@ -1089,6 +1212,11 @@ function renderOrderDetail(
             "admin-order-tracking-whatsapp-button"
         );
 
+    const rotateTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-rotate-button"
+        );
+
     const total =
         getOrderDetailElement(
             "admin-order-detail-total"
@@ -1180,6 +1308,13 @@ function renderOrderDetail(
     if (shareTrackingButton) {
         shareTrackingButton.disabled =
             !trackingToken;
+    }
+
+    if (rotateTrackingButton) {
+        rotateTrackingButton.disabled = (
+            !order.id ||
+            adminOrdersState.rotatingTrackingToken
+        );
     }
 
     setOrderTrackingFeedback("");
@@ -2615,6 +2750,11 @@ function setupOrderDetailModal() {
             "admin-order-cancel-button"
         );
 
+    const rotateTrackingButton =
+        getOrderDetailElement(
+            "admin-order-tracking-rotate-button"
+        );
+
     const whatsappButton =
         getOrderDetailElement(
             "admin-order-whatsapp-button"
@@ -2702,6 +2842,15 @@ function setupOrderDetailModal() {
                 shareOrderTrackingByWhatsApp(
                     adminOrdersState.currentOrder
                 );
+            }
+        );
+    }
+
+    if (rotateTrackingButton) {
+        rotateTrackingButton.addEventListener(
+            "click",
+            () => {
+                void rotateOrderTrackingToken();
             }
         );
     }

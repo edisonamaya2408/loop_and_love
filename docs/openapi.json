@@ -185,7 +185,8 @@
                 "admin_user.deactivated",
                 "order.confirmed",
                 "order.cancelled",
-                "order.status_changed"
+                "order.status_changed",
+                "order.tracking_token_rotated"
               ]
             }
           },
@@ -1467,6 +1468,64 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "404": {
+            "description": "El pedido no existe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/{order_id}/tracking-token/rotate": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Regenera el código de seguimiento de un pedido.",
+        "operationId": "adminRotateOrderTrackingToken",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            },
+            "description": "ID del pedido."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Código regenerado correctamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderResponse"
                 }
               }
             }
@@ -2988,6 +3047,13 @@
                     "items": {
                       "$ref": "#/components/schemas/AdminOrderStatusHistoryItem"
                     }
+                  },
+                  "tracking_token": {
+                    "type": "string",
+                    "minLength": 43,
+                    "maxLength": 43,
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "Código secreto de seguimiento del pedido."
                   }
                 }
               }
