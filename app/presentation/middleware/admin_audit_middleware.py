@@ -642,7 +642,13 @@ def _build_mutation_description(
         False,
     )
 
-    if snapshot_enabled:
+    if action == "order.tracking_token_rotated":
+        # El token es una credencial de seguimiento.
+        # Registramos la operación, pero no intentamos
+        # compararlo ni almacenarlo en los snapshots.
+        details["tracking_token_rotated"] = True
+
+    elif snapshot_enabled:
         before = getattr(
             g,
             "admin_audit_before",

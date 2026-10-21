@@ -672,6 +672,11 @@ def test_audit_marks_credential_change_without_storing_secret(
 def test_audit_tracking_token_rotation_never_stores_token():
     app, repository = _create_audit_test_app()
 
+    # Simular la presencia de SQLAlchemy para verificar
+    # el flujo de auditoría utilizado en producción.
+    # La rotación no debe activar la comparación genérica.
+    app.extensions["sqlalchemy"] = object()
+
     response = app.test_client().post(
         "/api/admin/orders/15/tracking-token/rotate"
     )

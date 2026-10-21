@@ -1779,6 +1779,25 @@
 }
 
 
+.admin-dashboard-order-status--preparing {
+    background: #EAE4F7;
+    border-color: #C7B7E4;
+    color: #604A8D;
+}
+
+.admin-dashboard-order-status--shipped {
+    background: #DDF0F3;
+    border-color: #A5D3DB;
+    color: #286875;
+}
+
+.admin-dashboard-order-status--delivered {
+    background: #DCEFE1;
+    border-color: #A8D3B5;
+    color: #286344;
+}
+
+
 .admin-dashboard-orders-loading,
 .admin-dashboard-orders-empty {
     padding:

@@ -1133,15 +1133,15 @@ function formatDashboardCurrency(
 }
 
 
-function getDashboardOrderStatusLabel(
-    status
-) {
+function getDashboardOrderStatusLabel(status) {
     const labels = {
         pending: "Pendiente",
         confirmed: "Confirmado",
+        preparing: "En preparación",
+        shipped: "Enviado",
+        delivered: "Entregado",
         cancelled: "Cancelado",
     };
-
 
     return (
         labels[status]

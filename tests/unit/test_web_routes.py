@@ -798,6 +798,31 @@ def test_admin_dashboard_uses_recent_orders_endpoint(
         in normalized_body
     )
 
+    for expected_label in (
+        'preparing: "En preparación"',
+        'shipped: "Enviado"',
+        'delivered: "Entregado"',
+        'cancelled: "Cancelado"',
+    ):
+        assert expected_label in normalized_body
+
+    css_response = client.get(
+        "/static/css/admin.css"
+    )
+
+    assert css_response.status_code == 200
+
+    css_body = css_response.get_data(
+        as_text=True
+    )
+
+    for expected_class in (
+        ".admin-dashboard-order-status--preparing",
+        ".admin-dashboard-order-status--shipped",
+        ".admin-dashboard-order-status--delivered",
+    ):
+        assert expected_class in css_body
+
 def test_admin_dashboard_defines_recent_order_currency_formatter(
     monkeypatch,
 ):

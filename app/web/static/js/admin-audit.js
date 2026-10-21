@@ -125,6 +125,9 @@ const AUDIT_FIELD_LABELS = {
 const AUDIT_STATUS_LABELS = {
     pending: "Pendiente",
     confirmed: "Confirmado",
+    preparing: "En preparación",
+    shipped: "Enviado",
+    delivered: "Entregado",
     cancelled: "Cancelado",
 };
 
@@ -310,24 +313,41 @@ function renderAuditDetails(details, requestId) {
 
     const changeCount = Object.keys(changes).length;
 
+    const isTrackingTokenRotation =
+        safeDetails.tracking_token_rotated === true;
+
     const summary = document.createElement("summary");
-    summary.textContent = changeCount > 0
-        ? `Ver cambios (${changeCount})`
-        : "Ver detalles";
+
+    summary.textContent = isTrackingTokenRotation
+        ? "Ver detalles de regeneración"
+        : changeCount > 0
+            ? `Ver cambios (${changeCount})`
+            : "Ver detalles";
 
     const content = document.createElement("div");
     content.className = "admin-audit-details__content";
 
-    if (changeCount > 0) {
+    if (isTrackingTokenRotation) {
+        appendAuditNote(
+            content,
+            "Se regeneró el código de seguimiento. "
+            + "El código anterior dejó de ser válido. "
+            + "Por seguridad, el código nuevo no se almacena "
+            + "en la auditoría."
+        );
+
+    } else if (changeCount > 0) {
         content.append(
             renderAuditChangeTable(changes)
         );
+
     } else if (safeDetails.comparison_available === false) {
         appendAuditNote(
             content,
             "La operación fue registrada, pero no fue posible "
             + "comparar de forma confiable los valores persistidos."
         );
+
     } else if (safeDetails.comparison_available === true) {
         appendAuditNote(
             content,
@@ -452,7 +472,7 @@ function renderAuditEvents(events) {
         appendTextCell(
             row,
             event.entity_id !== null &&
-            event.entity_id !== undefined
+                event.entity_id !== undefined
                 ? `#${event.entity_id}`
                 : "—"
         );
@@ -637,7 +657,7 @@ function setupAuditFilters() {
             adminAuditState.filters.date_from &&
             adminAuditState.filters.date_to &&
             adminAuditState.filters.date_from >
-                adminAuditState.filters.date_to
+            adminAuditState.filters.date_to
         ) {
             setAuditMessage(
                 "La fecha desde no puede ser posterior a la fecha hasta."

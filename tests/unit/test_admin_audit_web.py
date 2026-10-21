@@ -104,3 +104,14 @@ def test_admin_audit_script_uses_protected_read_only_endpoint(monkeypatch):
     assert "admin-audit-entity-type" in body
     assert "admin-audit-date-from" in body
     assert "admin-audit-date-to" in body
+
+    for expected_label in (
+        'preparing: "En preparación"',
+        'shipped: "Enviado"',
+        'delivered: "Entregado"',
+    ):
+        assert expected_label in body
+
+    assert "Ver detalles de regeneración" in body
+    assert "El código anterior dejó de ser válido." in body
+    assert "el código nuevo no se almacena" in body
