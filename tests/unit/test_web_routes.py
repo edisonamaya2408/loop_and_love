@@ -1280,3 +1280,37 @@ def test_admin_dashboard_includes_refresh_status_and_distinguishes_order_errors(
     assert "No fue posible actualizar los datos" in script_body
     assert "No fue posible cargar los pedidos recientes" in script_body
     assert "options.error" in script_body
+
+
+def test_health_response_includes_security_headers(
+    monkeypatch,
+):
+    app, _ = _create_web_app(
+        monkeypatch
+    )
+
+    response = app.test_client().get(
+        "/health"
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        response.headers["X-Content-Type-Options"]
+        == "nosniff"
+    )
+
+    assert (
+        response.headers["X-Frame-Options"]
+        == "DENY"
+    )
+
+    assert (
+        response.headers["Referrer-Policy"]
+        == "strict-origin-when-cross-origin"
+    )
+
+    assert (
+        response.headers["Permissions-Policy"]
+        == "camera=(), microphone=(), geolocation=()"
+    )

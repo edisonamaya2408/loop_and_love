@@ -83,6 +83,9 @@ jobs:
       - name: Verify installed dependencies
         run: python -m pip check
 
+      - name: Audit Python dependency vulnerabilities
+        run: pip-audit --strict
+
       - name: Install Chromium for browser tests
         run: python -m playwright install --with-deps chromium
 

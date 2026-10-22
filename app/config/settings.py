@@ -556,6 +556,7 @@ class Config:
         "max_overflow": SQLALCHEMY_MAX_OVERFLOW,
         "pool_timeout": SQLALCHEMY_POOL_TIMEOUT,
         "pool_recycle": SQLALCHEMY_POOL_RECYCLE,
+        "hide_parameters": True,
     }
 
     WHATSAPP_NUMBER = os.getenv(
@@ -847,6 +848,7 @@ class Config:
             "max_overflow": max_overflow,
             "pool_timeout": pool_timeout,
             "pool_recycle": pool_recycle,
+            "hide_parameters": True,
         }
 
         cls.JWT_ACCESS_TOKEN_EXPIRES_MINUTES = (
@@ -927,6 +929,7 @@ class TestingConfig(Config):
         "max_overflow": 0,
         "pool_timeout": 10,
         "pool_recycle": 1800,
+        "hide_parameters": True,
     }
 
 

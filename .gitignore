@@ -45,3 +45,6 @@ playwright/.cache/
 
 # Browser and test debug artifacts
 *.trace
+
+# Product images uploaded locally at runtime
+app/web/static/uploads/

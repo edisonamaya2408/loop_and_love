@@ -626,6 +626,8 @@ def test_sqlalchemy_pool_configuration():
         "SQLALCHEMY_ENGINE_OPTIONS"
     ]
 
+    assert options["hide_parameters"] is True
+
     assert options[
         "pool_pre_ping"
     ] is True
@@ -665,6 +667,8 @@ def test_testing_uses_restricted_sqlalchemy_pool(
     options = app.config[
         "SQLALCHEMY_ENGINE_OPTIONS"
     ]
+
+    assert options["hide_parameters"] is True
 
     assert options[
         "pool_pre_ping"

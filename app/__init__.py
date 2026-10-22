@@ -236,6 +236,38 @@ def create_app(environment=None):
         app
     )
 
+    @app.after_request
+    def apply_security_headers(response):
+        response.headers.setdefault(
+            "X-Content-Type-Options",
+            "nosniff",
+        )
+
+        response.headers.setdefault(
+            "X-Frame-Options",
+            "DENY",
+        )
+
+        response.headers.setdefault(
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin",
+        )
+
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()",
+        )
+
+        # Render debe servir el sitio mediante HTTPS
+        # para que este encabezado tenga efecto.
+        if environment == "production":
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000",
+            )
+
+        return response
+
     @app.get("/health")
     def health_check():
         """
