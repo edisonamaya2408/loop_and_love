@@ -17,6 +17,9 @@ from app.infrastructure.database.models.order_status_history_model import (
 from app.infrastructure.database.models.product_model import (
     Product,
 )
+from app.infrastructure.database.models.delivery_settings_model import (
+    DeliverySettings,
+)
 
 __all__ = [
     "AdminAuditLog",
@@ -26,4 +29,5 @@ __all__ = [
     "OrderItem",
     "OrderStatusHistory",
     "Product",
+    "DeliverySettings",
 ]

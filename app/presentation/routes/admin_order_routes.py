@@ -5,6 +5,8 @@ from flask import (
     request,
 )
 
+from decimal import Decimal
+
 from app.application.services.order_service import (
     OrderService,
 )
@@ -29,6 +31,42 @@ def _get_order_service():
         repository=SQLAlchemyOrderRepository(),
         product_repository=SQLAlchemyProductRepository(),
     )
+
+
+def _order_delivery_summary(order):
+    subtotal = sum(
+        (
+            item.line_total
+            for item in order.items
+        ),
+        Decimal("0.00"),
+    )
+
+    return {
+        "subtotal": f"{subtotal:.2f}",
+        "delivery_fee": f"{Decimal(str(getattr(order, 'delivery_fee', 0))):.2f}",
+    }
+
+
+def _order_delivery_detail(order):
+    distance = getattr(
+        order,
+        "delivery_distance_km",
+        None,
+    )
+
+    return {
+        "delivery_distance_km": (
+            f"{distance:.2f}"
+            if distance is not None
+            else None
+        ),
+        "delivery_billable_km": getattr(
+            order,
+            "delivery_billable_km",
+            None,
+        ),
+    }
 
 
 def _order_to_dict(order):
@@ -105,6 +143,8 @@ def _order_to_dict(order):
             if order.updated_at
             else None
         ),
+        **_order_delivery_summary(order),
+        **_order_delivery_detail(order),
     }
 
 def _order_list_to_dict(order):
@@ -142,6 +182,7 @@ def _order_list_to_dict(order):
             if order.updated_at
             else None
         ),
+        **_order_delivery_summary(order),
     }
 
 @admin_orders_bp.get("/<int:order_id>")

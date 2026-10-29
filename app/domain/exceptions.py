@@ -154,3 +154,17 @@ class OrderIdempotencyConflictError(DomainError):
             "La clave de solicitud ya fue utilizada con datos "
             "diferentes. Revisa el pedido e inténtalo nuevamente."
         )
+
+
+class DeliverySettingsNotConfiguredError(DomainError):
+    def __init__(self):
+        super().__init__(
+            "El servicio de domicilio todavía no está configurado."
+        )
+
+
+class DeliveryOutsideCoverageError(DomainError):
+    def __init__(self):
+        super().__init__(
+            "La dirección está fuera del radio de cobertura de domicilio."
+        )

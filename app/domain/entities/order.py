@@ -59,3 +59,23 @@ class OrderEntity:
         compare=False,
     )
     tracking_token: str | None = None
+    delivery_fee: Decimal = field(
+        default_factory=lambda: Decimal("0.00")
+    )
+
+    delivery_latitude: Decimal | None = None
+    delivery_longitude: Decimal | None = None
+
+    delivery_straight_distance_km: Decimal | None = None
+    delivery_distance_km: Decimal | None = None
+    delivery_billable_km: int | None = None
+
+    delivery_base_fee: Decimal = field(
+        default_factory=lambda: Decimal("0.00")
+    )
+
+    delivery_price_per_km: Decimal = field(
+        default_factory=lambda: Decimal("0.00")
+    )
+
+    delivery_distance_factor: Decimal | None = None

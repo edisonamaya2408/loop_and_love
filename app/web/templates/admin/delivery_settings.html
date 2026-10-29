@@ -1,0 +1,105 @@
+{% extends "admin/base.html" %}
+
+{% block title %}
+Loop & Love | Configuración de domicilio
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-delivery.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page-header">
+    <div>
+        <span class="eyebrow">CONFIGURACIÓN</span>
+        <h1>Tarifa de domicilio</h1>
+        <p>
+            Define el origen, el valor base, el incremento por
+            distancia y la cobertura de las entregas.
+        </p>
+    </div>
+</section>
+
+<form id="admin-delivery-settings-form" class="admin-panel admin-delivery-form">
+    <div id="admin-delivery-message" role="status" aria-live="polite" hidden></div>
+
+    <h2>Tarifas</h2>
+
+    <div class="admin-delivery-grid">
+        <div>
+            <label for="delivery-base-fee">Domicilio base (COP)</label>
+            <input id="delivery-base-fee" type="number" min="0" step="100" required>
+        </div>
+
+        <div>
+            <label for="delivery-price-per-km">Valor por kilómetro (COP)</label>
+            <input id="delivery-price-per-km" type="number" min="0" step="100" required>
+        </div>
+
+        <div>
+            <label for="delivery-distance-factor">Factor de recorrido (1 a 3)</label>
+            <input id="delivery-distance-factor" type="number" min="1" max="3" step="0.05" required>
+        </div>
+
+        <div>
+            <label for="delivery-max-distance">Distancia máxima (km)</label>
+            <input id="delivery-max-distance" type="number" min="1" max="300" step="0.5" required>
+        </div>
+    </div>
+
+    <p class="admin-delivery-help">
+        La tarifa se calcula usando la distancia en línea recta
+        multiplicada por el factor de recorrido. No representa
+        una ruta exacta por calles.
+    </p>
+
+    <h2>Origen de los tejidos</h2>
+    <p>Haz clic en el mapa para marcar la ubicación exacta de origen.</p>
+
+    <div id="delivery-origin-map" class="admin-delivery-map"></div>
+
+    <div class="admin-delivery-grid">
+        <div>
+            <label for="delivery-origin-latitude">Latitud de origen</label>
+            <input id="delivery-origin-latitude" type="number" min="-90" max="90" step="0.0000001" required>
+        </div>
+
+        <div>
+            <label for="delivery-origin-longitude">Longitud de origen</label>
+            <input id="delivery-origin-longitude" type="number" min="-180" max="180" step="0.0000001" required>
+        </div>
+    </div>
+
+    <h2>Centro aproximado del mapa público</h2>
+    <p>
+        El cliente verá esta zona inicial, no la ubicación privada
+        exacta donde se realizan los tejidos.
+    </p>
+
+    <div id="delivery-public-center-map" class="admin-delivery-map"></div>
+
+    <div class="admin-delivery-grid">
+        <div>
+            <label for="delivery-public-latitude">Latitud del centro público</label>
+            <input id="delivery-public-latitude" type="number" min="-90" max="90" step="0.0000001" required>
+        </div>
+
+        <div>
+            <label for="delivery-public-longitude">Longitud del centro público</label>
+            <input id="delivery-public-longitude" type="number" min="-180" max="180" step="0.0000001" required>
+        </div>
+    </div>
+
+    <div class="admin-delivery-actions">
+        <button type="submit" class="admin-products-button admin-products-button--primary" id="delivery-settings-save">
+            Guardar configuración
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/admin-delivery.js') }}" defer></script>
+{% endblock %}

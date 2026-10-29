@@ -67,6 +67,10 @@ EXPECTED_OPERATIONS = {
     ("POST", "/api/orders/track"),
     ("POST", "/api/admin/orders/<int:order_id>/tracking-token/rotate",),
     ("POST", "/api/admin/orders/<int:order_id>/status-notification/prepared",),
+    ("GET", "/api/admin/delivery-settings"),
+    ("PUT", "/api/admin/delivery-settings"),
+    ("GET", "/api/delivery/config"),
+    ("POST", "/api/delivery/quote"),
 }
 
 
@@ -97,6 +101,9 @@ EXPECTED_OPENAPI_PATHS = {
     "/api/orders/track",
     "/api/admin/orders/{order_id}/tracking-token/rotate",
     "/api/admin/orders/{order_id}/status-notification/prepared",
+    "/api/admin/delivery-settings",
+    "/api/delivery/config",
+    "/api/delivery/quote",
 }
 
 
@@ -280,6 +287,7 @@ def test_openapi_protected_routes_use_bearer_auth():
         "/api/admin/audit-logs",
         "/api/admin/orders/{order_id}/tracking-token/rotate",
         "/api/admin/orders/{order_id}/status-notification/prepared",
+        "/api/admin/delivery-settings",
     }
 
     for path in protected_paths:
@@ -305,6 +313,8 @@ def test_openapi_public_catalog_routes_do_not_require_authentication():
         "/api/categories/{category_id}",
         "/api/orders",
         "/api/orders/track",
+        "/api/delivery/config",
+        "/api/delivery/quote",
     }
 
     for path in public_paths:
@@ -400,3 +410,100 @@ def test_openapi_documents_tracking_token_on_order_creation():
 
     assert token_schema["minLength"] == 43
     assert token_schema["maxLength"] == 43
+
+
+def test_openapi_documents_delivery_pricing_contract():
+    document = _load_openapi()
+    paths = document["paths"]
+    schemas = document["components"]["schemas"]
+
+    admin_path = paths["/api/admin/delivery-settings"]
+
+    assert admin_path["get"]["security"] == [
+        {"bearerAuth": []}
+    ]
+
+    assert admin_path["put"]["security"] == [
+        {"bearerAuth": []}
+    ]
+
+    settings_request = schemas[
+        "DeliverySettingsUpdateRequest"
+    ]
+
+    assert set(settings_request["required"]) == {
+        "origin_latitude",
+        "origin_longitude",
+        "public_map_center_latitude",
+        "public_map_center_longitude",
+        "base_fee",
+        "price_per_km",
+        "distance_factor",
+        "max_distance_km",
+    }
+
+    public_config = paths[
+        "/api/delivery/config"
+    ]["get"]
+
+    assert "security" not in public_config
+
+    quote_operation = paths[
+        "/api/delivery/quote"
+    ]["post"]
+
+    assert "security" not in quote_operation
+
+    quote_request = schemas["DeliveryQuoteRequest"]
+
+    assert quote_request["additionalProperties"] is False
+
+    assert set(quote_request["required"]) == {
+        "latitude",
+        "longitude",
+    }
+
+    quote_data = schemas[
+        "DeliveryQuoteResponse"
+    ]["properties"]["data"]["properties"]
+
+    assert set(quote_data) == {
+        "delivery_fee",
+        "currency",
+    }
+
+    assert "origin_latitude" not in quote_data
+    assert "origin_longitude" not in quote_data
+    assert "straight_distance_km" not in quote_data
+
+    order_request = schemas["OrderCreateRequest"]
+
+    admin_order_detail = (
+        schemas["AdminOrderResponse"]
+        ["properties"]["data"]["allOf"][1]
+    )
+
+    assert "delivery_distance_km" in (
+        admin_order_detail["required"]
+    )
+
+    assert "delivery_billable_km" in (
+        admin_order_detail["required"]
+    )
+
+    assert (
+        admin_order_detail["properties"][
+            "delivery_distance_km"
+        ]["nullable"]
+        is True
+    )
+
+    assert (
+        admin_order_detail["properties"][
+            "delivery_billable_km"
+        ]["nullable"]
+        is True
+    )
+
+    assert "delivery_latitude" in order_request["required"]
+    assert "delivery_longitude" in order_request["required"]

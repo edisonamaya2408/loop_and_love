@@ -1,0 +1,65 @@
+.admin-delivery-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-delivery-form h2 {
+    margin: 0.8rem 0 0;
+}
+
+.admin-delivery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.admin-delivery-grid > div {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-delivery-grid input {
+    width: 100%;
+    min-height: 44px;
+}
+
+.admin-delivery-map {
+    width: 100%;
+    min-height: 330px;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.admin-delivery-help {
+    color: var(--admin-text-soft);
+    line-height: 1.6;
+}
+
+.admin-delivery-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+#admin-delivery-message {
+    padding: 0.8rem;
+    border-radius: 8px;
+}
+
+#admin-delivery-message[data-type="error"] {
+    color: #A52F36;
+}
+
+@media (max-width: 640px) {
+    .admin-delivery-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-delivery-map {
+        min-height: 260px;
+    }
+
+    .admin-delivery-actions button {
+        width: 100%;
+    }
+}

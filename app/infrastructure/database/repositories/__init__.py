@@ -13,6 +13,9 @@ from app.infrastructure.database.repositories.order_repository_impl import (
 from app.infrastructure.database.repositories.product_repository_impl import (
     SQLAlchemyProductRepository,
 )
+from app.infrastructure.database.repositories.delivery_settings_repository_impl import (
+    SQLAlchemyDeliverySettingsRepository,
+)
 
 __all__ = [
     "SQLAlchemyAdminAuditRepository",
@@ -20,4 +23,5 @@ __all__ = [
     "SQLAlchemyCategoryRepository",
     "SQLAlchemyOrderRepository",
     "SQLAlchemyProductRepository",
+    "SQLAlchemyDeliverySettingsRepository",
 ]

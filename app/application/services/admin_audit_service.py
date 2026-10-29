@@ -31,6 +31,7 @@ class AdminAuditService:
         "category",
         "order",
         "admin_user",
+        "delivery_settings",
     })
 
     ALLOWED_ACTIONS = frozenset({
@@ -53,6 +54,7 @@ class AdminAuditService:
         "order.status_changed",
         "order.tracking_token_rotated",
         "order.whatsapp_notification_prepared",
+        "delivery.settings_updated",
     })
 
     def __init__(

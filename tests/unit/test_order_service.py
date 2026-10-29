@@ -181,17 +181,55 @@ def _product(
     )
 
 
+class FakeDeliveryPricingService:
+    def __init__(self):
+        self.quote_calls = []
+
+    def normalize_coordinates(
+        self,
+        latitude,
+        longitude,
+    ):
+        from app.application.services.delivery_pricing_service import (
+            DeliveryPricingService,
+        )
+
+        return DeliveryPricingService.normalize_coordinates(
+            latitude,
+            longitude,
+        )
+
+    def quote(self, latitude, longitude):
+        self.quote_calls.append(
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+            }
+        )
+
+        return {
+            "latitude": latitude,
+            "longitude": longitude,
+            "straight_distance_km": Decimal("2.20"),
+            "distance_km": Decimal("2.86"),
+            "billable_km": 3,
+            "delivery_fee": Decimal("5900.00"),
+            "base_fee": Decimal("3500.00"),
+            "price_per_km": Decimal("800.00"),
+            "distance_factor": Decimal("1.30"),
+        }
+
+
 def _service(
     products=None,
+    delivery_pricing_service=None,
 ):
     return OrderService(
         repository=FakeOrderRepository(),
         product_repository=FakeProductRepository(
-            products=products
-            or [
-                _product()
-            ]
+            products=products or [_product()]
         ),
+        delivery_pricing_service=delivery_pricing_service,
     )
 
 
@@ -1128,3 +1166,177 @@ def test_rotating_tracking_token_returns_none_for_missing_order():
         service.rotate_admin_order_tracking_token(999)
         is None
     )
+
+
+def test_create_order_includes_delivery_fee_and_saves_quote_snapshot():
+    delivery_service = FakeDeliveryPricingService()
+
+    service = _service(
+        products=[
+            _product(
+                product_id=1,
+                price="85000.00",
+            )
+        ],
+        delivery_pricing_service=delivery_service,
+    )
+
+    order = service.create_order(
+        name="Cliente Domicilio",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations=None,
+        items=[
+            {
+                "product_id": 1,
+                "quantity": 2,
+            }
+        ],
+        idempotency_key=str(uuid4()),
+        delivery_latitude="6.2542000",
+        delivery_longitude="-75.5812000",
+    )
+
+    assert order.id == 1
+
+    subtotal = sum(
+        (
+            item.line_total
+            for item in order.items
+        ),
+        Decimal("0.00"),
+    )
+
+    assert subtotal == Decimal("170000.00")
+    assert order.delivery_fee == Decimal("5900.00")
+    assert order.total == Decimal("175900.00")
+
+    assert order.delivery_latitude == Decimal(
+        "6.2542000"
+    )
+
+    assert order.delivery_longitude == Decimal(
+        "-75.5812000"
+    )
+
+    assert order.delivery_distance_km == Decimal(
+        "2.86"
+    )
+
+    assert order.delivery_billable_km == 3
+    assert order.delivery_base_fee == Decimal("3500.00")
+    assert order.delivery_price_per_km == Decimal("800.00")
+    assert order.delivery_distance_factor == Decimal("1.30")
+
+    assert len(delivery_service.quote_calls) == 1
+
+
+def test_create_order_calculates_delivery_without_idempotency_key():
+    delivery_service = FakeDeliveryPricingService()
+
+    service = _service(
+        products=[
+            _product(
+                product_id=1,
+                price="85000.00",
+            )
+        ],
+        delivery_pricing_service=delivery_service,
+    )
+
+    order = service.create_order(
+        name="Cliente sin clave",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations=None,
+        items=[
+            {
+                "product_id": 1,
+                "quantity": 1,
+            }
+        ],
+        delivery_latitude="6.2542000",
+        delivery_longitude="-75.5812000",
+    )
+
+    assert order.id == 1
+    assert order.delivery_fee == Decimal("5900.00")
+    assert order.total == Decimal("90900.00")
+    assert len(delivery_service.quote_calls) == 1
+
+
+def test_new_order_requires_delivery_location_when_pricing_is_enabled():
+    service = _service(
+        delivery_pricing_service=(
+            FakeDeliveryPricingService()
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Selecciona la ubicación de entrega",
+    ):
+        service.create_order(
+            name="Cliente sin ubicación",
+            phone="3001234567",
+            city="Medellín",
+            address="Calle 10 # 25-30",
+            observations=None,
+            items=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+        )
+
+
+def test_idempotency_fingerprint_includes_delivery_location():
+    service = _service(
+        delivery_pricing_service=(
+            FakeDeliveryPricingService()
+        )
+    )
+
+    request_key = str(uuid4())
+
+    first_order = service.create_order(
+        name="Cliente Domicilio",
+        phone="3001234567",
+        city="Medellín",
+        address="Calle 10 # 25-30",
+        observations=None,
+        items=[
+            {
+                "product_id": 1,
+                "quantity": 1,
+            }
+        ],
+        idempotency_key=request_key,
+        delivery_latitude="6.2542000",
+        delivery_longitude="-75.5812000",
+    )
+
+    assert first_order.id == 1
+
+    with pytest.raises(
+        OrderIdempotencyConflictError
+    ):
+        service.create_order(
+            name="Cliente Domicilio",
+            phone="3001234567",
+            city="Medellín",
+            address="Calle 10 # 25-30",
+            observations=None,
+            items=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                }
+            ],
+            idempotency_key=request_key,
+            delivery_latitude="6.2600000",
+            delivery_longitude="-75.5700000",
+        )

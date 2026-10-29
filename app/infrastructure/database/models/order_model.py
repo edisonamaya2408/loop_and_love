@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import text
+from sqlalchemy import CheckConstraint, text
 
 from app.extensions import db
 from app.infrastructure.database.types import UTCDateTime
@@ -49,6 +49,20 @@ class Order(db.Model):
             sqlite_where=text(
                 "tracking_token IS NOT NULL"
             ),
+        ),
+        CheckConstraint(
+            "delivery_fee >= 0",
+            name="ck_orders_delivery_fee_nonnegative",
+        ),
+        CheckConstraint(
+            """
+            (delivery_latitude IS NULL
+             AND delivery_longitude IS NULL)
+            OR
+            (delivery_latitude IS NOT NULL
+             AND delivery_longitude IS NOT NULL)
+            """,
+            name="ck_orders_delivery_coordinates_pair",
         ),
     )
 
@@ -107,6 +121,57 @@ class Order(db.Model):
     total = db.Column(
         db.Numeric(14, 2),
         nullable=False,
+    )
+
+    delivery_fee = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+
+    delivery_latitude = db.Column(
+        db.Numeric(10, 7),
+        nullable=True,
+    )
+
+    delivery_longitude = db.Column(
+        db.Numeric(10, 7),
+        nullable=True,
+    )
+
+    delivery_straight_distance_km = db.Column(
+        db.Numeric(8, 2),
+        nullable=True,
+    )
+
+    delivery_distance_km = db.Column(
+        db.Numeric(8, 2),
+        nullable=True,
+    )
+
+    delivery_billable_km = db.Column(
+        db.Integer,
+        nullable=True,
+    )
+
+    delivery_base_fee = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+
+    delivery_price_per_km = db.Column(
+        db.Numeric(12, 2),
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+
+    delivery_distance_factor = db.Column(
+        db.Numeric(5, 2),
+        nullable=True,
     )
 
     created_at = db.Column(

@@ -40,7 +40,14 @@ class SQLAlchemyOrderRepository(OrderRepository):
         model: Order,
         include_status_history: bool = True,
     ) -> OrderEntity:
+        def decimal_or_none(value):
+            if value is None:
+                return None
 
+            return Decimal(str(value))
+
+        # Los campos de domicilio pertenecen al pedido,
+        # no a cada una de sus líneas de productos.
         items = [
             OrderItemEntity(
                 id=item.id,
@@ -58,35 +65,24 @@ class SQLAlchemyOrderRepository(OrderRepository):
             for item in model.items
         ]
 
-
         status_history = []
 
         if include_status_history:
-
             status_history = [
                 OrderStatusHistoryEntity(
                     id=history.id,
                     order_id=history.order_id,
-                    previous_status=(
-                        history.previous_status
-                    ),
-                    new_status=(
-                        history.new_status
-                    ),
+                    previous_status=history.previous_status,
+                    new_status=history.new_status,
                     changed_at=history.changed_at,
                     changed_by_admin_user_id=(
                         history.changed_by_admin_user_id
                     ),
-                    changed_by_name=(
-                        history.changed_by_name
-                    ),
-                    changed_by_email=(
-                        history.changed_by_email
-                    ),
+                    changed_by_name=history.changed_by_name,
+                    changed_by_email=history.changed_by_email,
                 )
                 for history in model.status_history
             ]
-
 
         return OrderEntity(
             id=model.id,
@@ -96,9 +92,7 @@ class SQLAlchemyOrderRepository(OrderRepository):
             address=model.address,
             observations=model.observations,
             status=model.status,
-            total=Decimal(
-                str(model.total)
-            ),
+            total=Decimal(str(model.total)),
             items=items,
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -106,6 +100,33 @@ class SQLAlchemyOrderRepository(OrderRepository):
             idempotency_key=model.idempotency_key,
             request_fingerprint=model.request_fingerprint,
             tracking_token=model.tracking_token,
+
+            # Fotografía del domicilio aplicado al pedido.
+            delivery_fee=Decimal(
+                str(model.delivery_fee or 0)
+            ),
+            delivery_latitude=decimal_or_none(
+                model.delivery_latitude
+            ),
+            delivery_longitude=decimal_or_none(
+                model.delivery_longitude
+            ),
+            delivery_straight_distance_km=decimal_or_none(
+                model.delivery_straight_distance_km
+            ),
+            delivery_distance_km=decimal_or_none(
+                model.delivery_distance_km
+            ),
+            delivery_billable_km=model.delivery_billable_km,
+            delivery_base_fee=Decimal(
+                str(model.delivery_base_fee or 0)
+            ),
+            delivery_price_per_km=Decimal(
+                str(model.delivery_price_per_km or 0)
+            ),
+            delivery_distance_factor=decimal_or_none(
+                model.delivery_distance_factor
+            ),
         )
 
     def create(
@@ -124,6 +145,19 @@ class SQLAlchemyOrderRepository(OrderRepository):
             idempotency_key=order.idempotency_key,
             request_fingerprint=order.request_fingerprint,
             tracking_token=order.tracking_token,
+            delivery_fee=order.delivery_fee,
+            delivery_latitude=order.delivery_latitude,
+            delivery_longitude=order.delivery_longitude,
+            delivery_straight_distance_km=(
+                order.delivery_straight_distance_km
+            ),
+            delivery_distance_km=order.delivery_distance_km,
+            delivery_billable_km=order.delivery_billable_km,
+            delivery_base_fee=order.delivery_base_fee,
+            delivery_price_per_km=order.delivery_price_per_km,
+            delivery_distance_factor=(
+                order.delivery_distance_factor
+            ),
         )
 
         model.items = [

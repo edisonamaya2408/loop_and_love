@@ -212,6 +212,21 @@
 
                     </a>
 
+                    <a href="{{ url_for('web.admin_delivery_settings_page') }}" class="admin-nav__item
+                        {% if request.path == url_for('web.admin_delivery_settings_page') %}
+                        admin-nav__item--active
+                        {% endif %}
+                    ">
+
+                        <span class="admin-nav__icon" aria-hidden="true">
+                            $
+                        </span>
+
+                        <span>
+                            Domicilios
+                        </span>
+                    </a>
+
                 </div>
 
 

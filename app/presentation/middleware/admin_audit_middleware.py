@@ -586,6 +586,15 @@ def _build_mutation_description(
         ):
             action = "order.whatsapp_notification_prepared"
 
+    elif resource == "delivery-settings":
+        entity_type = "delivery_settings"
+
+        if (
+            request.method == "PUT"
+            and not tail
+        ):
+            action = "delivery.settings_updated"
+
     if action is None:
         return None
 
@@ -627,6 +636,12 @@ def _build_mutation_description(
                 "tracking_token_rotated": True,
             }
 
+        elif action == "order.whatsapp_notification_prepared":
+            details = {
+                "whatsapp_notification_prepared": True,
+                "status": status,
+            }
+
         else:
             details = {
                 "previous_status": last_history.get(
@@ -635,10 +650,9 @@ def _build_mutation_description(
                 "new_status": status,
             }
 
-    elif action == "order.whatsapp_notification_prepared":
+    elif action == "delivery.settings_updated":
         details = {
-            "whatsapp_notification_prepared": True,
-            "status": status,
+            "delivery_settings_updated": True,
         }
 
     else:
@@ -661,15 +675,22 @@ def _build_mutation_description(
     if action in {
         "order.tracking_token_rotated",
         "order.whatsapp_notification_prepared",
+        "delivery.settings_updated",
     }:
         if action == "order.tracking_token_rotated":
             details = {
                 "tracking_token_rotated": True,
             }
-        else:
+
+        elif action == "order.whatsapp_notification_prepared":
             details = {
                 "whatsapp_notification_prepared": True,
                 "status": status,
+            }
+
+        else:
+            details = {
+                "delivery_settings_updated": True,
             }
 
     elif snapshot_enabled:

@@ -637,7 +637,7 @@
     font-size: 1rem;
 }
 
-.catalog-order-tracking__result > p {
+.catalog-order-tracking__result>p {
     margin: 0;
     color: var(--color-text-soft);
     font-size: 0.75rem;
@@ -779,6 +779,7 @@
 ================================================== */
 
 @media (max-width: 640px) {
+
     .catalog-order-form input,
     .catalog-order-form textarea,
     .catalog-order-tracking__form input[type="text"] {
@@ -804,5 +805,76 @@
     .catalog-order-feedback__link {
         display: inline-flex;
         align-items: center;
+    }
+}
+
+/* ==================================================
+   DELIVERY MAP AND QUOTE
+================================================== */
+
+.catalog-delivery-map {
+    width: 100%;
+    min-height: 320px;
+    border: 1px solid var(--color-border, #D9D2CC);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #F5F1ED;
+}
+
+.catalog-delivery-feedback {
+    margin: 0.6rem 0 0;
+    color: var(--color-text-soft, #766D66);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.catalog-delivery-feedback[data-type="error"] {
+    color: #A52F36;
+}
+
+.catalog-delivery-summary {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border, #D9D2CC);
+    border-radius: 12px;
+    background: #FCF7F2;
+}
+
+/* Respetar hidden aunque la clase defina display:grid. */
+.catalog-delivery-summary[hidden] {
+    display: none !important;
+}
+
+.catalog-delivery-summary>div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.catalog-delivery-summary>div:last-of-type {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border, #D9D2CC);
+}
+
+.catalog-delivery-summary strong {
+    color: var(--color-brown, #634638);
+    text-align: right;
+}
+
+.catalog-delivery-summary small {
+    color: var(--color-text-soft, #766D66);
+    line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+    .catalog-delivery-map {
+        min-height: 260px;
+    }
+
+    .catalog-delivery-summary>div {
+        align-items: flex-start;
     }
 }

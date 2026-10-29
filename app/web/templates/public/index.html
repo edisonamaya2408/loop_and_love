@@ -23,6 +23,8 @@ Loop & Love | Catálogo
         filename='css/order.css'
     ) }}">
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 {% endblock %}
 
 
@@ -357,7 +359,7 @@ Loop & Love | Catálogo
                 <div class="catalog-cart-summary">
 
                     <span>
-                        Total estimado
+                        Subtotal de productos
                     </span>
 
                     <strong id="cart-total">
@@ -444,6 +446,52 @@ Loop & Love | Catálogo
                                 <input id="order-customer-address" name="address" type="text" maxlength="200"
                                     autocomplete="street-address" placeholder="Ej. Calle 10 # 25-30, Apto 201" required>
 
+                            </div>
+
+
+                            <div class="catalog-field catalog-field--full">
+                                <label for="delivery-destination-map">
+                                    Ubicación de entrega
+                                </label>
+
+                                <p>
+                                    Marca en el mapa el punto donde recibirás el pedido.
+                                    El valor definitivo del domicilio se calcula en el servidor.
+                                </p>
+
+                                <div id="delivery-destination-map" class="catalog-delivery-map" role="region"
+                                    aria-label="Seleccionar ubicación de entrega"></div>
+
+                                <input type="hidden" id="delivery-destination-latitude">
+
+                                <input type="hidden" id="delivery-destination-longitude">
+
+                                <p id="delivery-quote-feedback" class="catalog-delivery-feedback" role="status"
+                                    aria-live="polite">
+                                    Selecciona un punto en el mapa.
+                                </p>
+
+                                <div id="delivery-quote-summary" class="catalog-delivery-summary" hidden>
+                                    <div>
+                                        <span>Subtotal de productos</span>
+                                        <strong id="delivery-quote-subtotal">—</strong>
+                                    </div>
+
+                                    <div>
+                                        <span>Domicilio estimado</span>
+                                        <strong id="delivery-quote-fee">—</strong>
+                                    </div>
+
+                                    <div>
+                                        <span>Total estimado del pedido</span>
+                                        <strong id="delivery-quote-total">—</strong>
+                                    </div>
+
+                                    <small>
+                                        La cotización es una estimación. El servidor volverá a
+                                        calcular el domicilio antes de registrar el pedido.
+                                    </small>
+                                </div>
                             </div>
 
 
@@ -598,14 +646,12 @@ Loop & Love | Catálogo
 
 {% block scripts %}
 
-<script src="{{ url_for(
-        'static',
-        filename='js/cart.js'
-    ) }}" defer></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 
-<script src="{{ url_for(
-        'static',
-        filename='js/order.js'
-    ) }}" defer></script>
+<script src="{{ url_for('static', filename='js/cart.js') }}" defer></script>
+
+<script src="{{ url_for('static', filename='js/delivery.js') }}" defer></script>
+
+<script src="{{ url_for('static', filename='js/order.js') }}" defer></script>
 
 {% endblock %}

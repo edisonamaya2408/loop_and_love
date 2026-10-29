@@ -73,7 +73,12 @@ from app.presentation.routes.web_routes import (
 from app.domain.exceptions import (
     StorageOperationError,
 )
-
+from app.presentation.routes.admin_delivery_routes import (
+    admin_delivery_bp,
+)
+from app.presentation.routes.delivery_routes import (
+    delivery_bp,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -234,6 +239,14 @@ def create_app(environment=None):
 
     register_admin_audit(
         app
+    )
+
+    app.register_blueprint(
+        admin_delivery_bp
+    )
+
+    app.register_blueprint(
+        delivery_bp
     )
 
     @app.after_request

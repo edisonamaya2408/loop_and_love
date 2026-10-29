@@ -536,8 +536,26 @@ function showOrderFeedback(
         const rows = [
             ["Número de pedido", `#${summary.orderId}`],
             ["Unidades", String(summary.itemCount)],
-            ["Total", formatOrderPrice(summary.total)],
         ];
+
+        if (summary.subtotal !== undefined) {
+            rows.push([
+                "Subtotal productos",
+                formatOrderPrice(summary.subtotal),
+            ]);
+        }
+
+        if (summary.deliveryFee !== undefined) {
+            rows.push([
+                "Domicilio",
+                formatOrderPrice(summary.deliveryFee),
+            ]);
+        }
+
+        rows.push([
+            "Total",
+            formatOrderPrice(summary.total),
+        ]);
 
         rows.forEach(([label, value]) => {
             const term = document.createElement("dt");
@@ -823,8 +841,20 @@ function buildWhatsAppMessage(
     );
 
 
+    const subtotal = order.subtotal ??
+        items.reduce(
+            (sum, item) => (
+                sum + Number(item.line_total || 0)
+            ),
+            0
+        );
+
+    const deliveryFee = order.delivery_fee ?? 0;
+
     lines.push(
         "",
+        `*Subtotal productos:* ${formatOrderPrice(subtotal)}`,
+        `*Domicilio:* ${formatOrderPrice(deliveryFee)}`,
         `*Total:* ${formatOrderPrice(order.total)}`,
         "",
         "*Datos del cliente:*",
@@ -882,6 +912,8 @@ function resetOrderForm() {
     if (form) {
         form.reset();
     }
+
+    window.LoopAndLoveDelivery?.reset();
 }
 
 
@@ -1061,8 +1093,22 @@ async function performOrderSubmission(
             data.data.id === undefined ||
             data.data.id === null
         ) {
-            const uncertain =
-                response.status >= 500 || response.ok;
+            const deterministicDeliveryError = [
+                "DELIVERY_NOT_CONFIGURED",
+                "DELIVERY_OUT_OF_COVERAGE",
+                "INVALID_DELIVERY_LOCATION",
+                "INVALID_ORDER_REQUEST",
+            ].includes(
+                data?.error?.code
+            );
+
+            const uncertain = (
+                !deterministicDeliveryError &&
+                (
+                    response.status >= 500 ||
+                    response.ok
+                )
+            );
 
             const message = getOrderApiError(
                 data,
@@ -1141,8 +1187,10 @@ async function performOrderSubmission(
 
         const summary = {
             orderId: confirmedOrder.id,
-            total: confirmedOrder.total,
             itemCount,
+            subtotal: confirmedOrder.subtotal,
+            deliveryFee: confirmedOrder.delivery_fee,
+            total: confirmedOrder.total,
         };
 
         /*
@@ -1304,6 +1352,18 @@ async function submitCatalogOrder(event) {
         return;
     }
 
+    const deliverySelection =
+        window.LoopAndLoveDelivery?.getCheckoutData();
+
+    if (!deliverySelection) {
+        showOrderFeedback(
+            "Selecciona una ubicación válida en el mapa y espera a que se calcule el domicilio.",
+            "error"
+        );
+
+        return;
+    }
+
     const whatsappNumber = getWhatsAppNumber();
 
     if (!isValidWhatsAppNumber(whatsappNumber)) {
@@ -1330,6 +1390,12 @@ async function submitCatalogOrder(event) {
 
         observations:
             getOrderElement("order-customer-observations")?.value || null,
+
+        delivery_latitude:
+            deliverySelection.delivery_latitude,
+
+        delivery_longitude:
+            deliverySelection.delivery_longitude,
 
         items,
     };

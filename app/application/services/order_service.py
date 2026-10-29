@@ -49,9 +49,13 @@ class OrderService:
         self,
         repository: OrderRepository,
         product_repository: ProductRepository,
+        delivery_pricing_service=None,
     ):
         self.repository = repository
         self.product_repository = product_repository
+        self.delivery_pricing_service = (
+            delivery_pricing_service
+        )
 
     
     @staticmethod
@@ -87,6 +91,8 @@ class OrderService:
         address: str,
         observations: str | None,
         items: list[dict[str, int]],
+        delivery_latitude: Decimal | None = None,
+        delivery_longitude: Decimal | None = None,
     ) -> str:
         canonical_payload = {
             "name": name,
@@ -99,6 +105,17 @@ class OrderService:
                 key=lambda item: item["product_id"],
             ),
         }
+
+        # La ubicación forma parte de la petición.
+        # La misma clave no puede reutilizarse para otra dirección.
+        if (
+            delivery_latitude is not None
+            and delivery_longitude is not None
+        ):
+            canonical_payload["delivery_location"] = {
+                "latitude": str(delivery_latitude),
+                "longitude": str(delivery_longitude),
+            }
 
         serialized = json.dumps(
             canonical_payload,
@@ -137,6 +154,8 @@ class OrderService:
         items,
         *,
         idempotency_key: str | None = None,
+        delivery_latitude=None,
+        delivery_longitude=None,
     ) -> OrderEntity:
         customer_name = self._validate_text(
             name,
@@ -171,6 +190,32 @@ class OrderService:
             items
         )
 
+        clean_delivery_latitude = None
+        clean_delivery_longitude = None
+
+        if (
+            (delivery_latitude is None)
+            != (delivery_longitude is None)
+        ):
+            raise ValueError(
+                "Debes seleccionar la ubicación de entrega en el mapa."
+            )
+
+        if delivery_latitude is not None:
+            if self.delivery_pricing_service is None:
+                raise ValueError(
+                    "El cálculo de domicilio no está disponible."
+                )
+
+            (
+                clean_delivery_latitude,
+                clean_delivery_longitude,
+            ) = (
+                self.delivery_pricing_service.normalize_coordinates(
+                    delivery_latitude,
+                    delivery_longitude,
+                )
+            )
         
         clean_idempotency_key = (
             self._normalize_idempotency_key(
@@ -189,6 +234,8 @@ class OrderService:
                     address=clean_address,
                     observations=clean_observations,
                     items=normalized_items,
+                    delivery_latitude=clean_delivery_latitude,
+                    delivery_longitude=clean_delivery_longitude,
                 )
             )
 
@@ -204,6 +251,27 @@ class OrderService:
                     request_fingerprint,
                 )
 
+        # Inicializar y calcular la cotización fuera del bloque
+        # de idempotencia, para que funcione incluso si no se
+        # envía una clave de solicitud.
+        delivery_quote = None
+
+        if self.delivery_pricing_service is not None:
+            if (
+                clean_delivery_latitude is None
+                or clean_delivery_longitude is None
+            ):
+                raise ValueError(
+                    "Selecciona la ubicación de entrega "
+                    "antes de enviar el pedido."
+                )
+
+            delivery_quote = (
+                self.delivery_pricing_service.quote(
+                    clean_delivery_latitude,
+                    clean_delivery_longitude,
+                )
+            )
 
         product_items = []
 
@@ -237,13 +305,21 @@ class OrderService:
                 )
             )
 
-        total = sum(
+        subtotal = sum(
             (
                 item.line_total
                 for item in product_items
             ),
             Decimal("0.00"),
         )
+
+        delivery_fee = (
+            delivery_quote["delivery_fee"]
+            if delivery_quote is not None
+            else Decimal("0.00")
+        )
+
+        total = subtotal + delivery_fee
 
         order = OrderEntity(
             id=None,
@@ -258,6 +334,55 @@ class OrderService:
             idempotency_key=clean_idempotency_key,
             request_fingerprint=request_fingerprint,
             tracking_token=secrets.token_urlsafe(32),
+            delivery_fee=delivery_fee,
+
+            delivery_latitude=(
+                delivery_quote["latitude"]
+                if delivery_quote is not None
+                else None
+            ),
+
+            delivery_longitude=(
+                delivery_quote["longitude"]
+                if delivery_quote is not None
+                else None
+            ),
+
+            delivery_straight_distance_km=(
+                delivery_quote["straight_distance_km"]
+                if delivery_quote is not None
+                else None
+            ),
+
+            delivery_distance_km=(
+                delivery_quote["distance_km"]
+                if delivery_quote is not None
+                else None
+            ),
+
+            delivery_billable_km=(
+                delivery_quote["billable_km"]
+                if delivery_quote is not None
+                else None
+            ),
+
+            delivery_base_fee=(
+                delivery_quote["base_fee"]
+                if delivery_quote is not None
+                else Decimal("0.00")
+            ),
+
+            delivery_price_per_km=(
+                delivery_quote["price_per_km"]
+                if delivery_quote is not None
+                else Decimal("0.00")
+            ),
+
+            delivery_distance_factor=(
+                delivery_quote["distance_factor"]
+                if delivery_quote is not None
+                else None
+            ),
         )
 
         

@@ -40,6 +40,7 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
     order_requests = []
     stored_orders = {}
     tracking_requests = []
+    delivery_quote_requests = []
     whatsapp_urls = []
     browser_errors = []
     tracking_statuses = {
@@ -114,6 +115,56 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
             },
         )
 
+
+    def handle_delivery_config(route):
+        fulfill_json(
+            route,
+            {
+                "success": True,
+                "data": {
+                    "map_center_latitude": "6.2500000",
+                    "map_center_longitude": "-75.5700000",
+                    "max_distance_km": "50.00",
+                },
+            },
+        )
+
+    def handle_delivery_quote(route):
+        payload = json.loads(
+            route.request.post_data or "{}"
+        )
+
+        delivery_quote_requests.append(payload)
+
+        if (
+            "latitude" not in payload
+            or "longitude" not in payload
+        ):
+            fulfill_json(
+                route,
+                {
+                    "success": False,
+                    "error": {
+                        "code": "INVALID_DELIVERY_LOCATION",
+                        "message": "La ubicación no es válida.",
+                    },
+                },
+                status=400,
+            )
+            return
+
+        fulfill_json(
+            route,
+            {
+                "success": True,
+                "data": {
+                    "delivery_fee": "5900.00",
+                    "currency": "COP",
+                },
+            },
+        )
+
+
     def make_order_response(payload):
         items = payload.get("items", [])
 
@@ -131,7 +182,9 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                 "El producto recibido no es el esperado."
             )
 
-        total = PRODUCT_PRICE * quantity
+        subtotal = PRODUCT_PRICE * quantity
+        delivery_fee = 5900
+        total = subtotal + delivery_fee
 
         return {
             "id": ORDER_ID,
@@ -148,9 +201,11 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                     "name": PRODUCT_NAME,
                     "unit_price": f"{PRODUCT_PRICE:.2f}",
                     "quantity": quantity,
-                    "line_total": f"{total:.2f}",
+                    "line_total": f"{subtotal:.2f}",
                 }
             ],
+            "subtotal": f"{subtotal:.2f}",
+            "delivery_fee": f"{delivery_fee:.2f}",
             "total": f"{total:.2f}",
             "created_at": "2026-10-18T15:00:00+00:00",
             "updated_at": "2026-10-18T15:00:00+00:00",
@@ -353,6 +408,14 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                     handle_tracking,
                 )
                 context.route(
+                    re.compile(r".*/api/delivery/config/?$"),
+                    handle_delivery_config,
+                )
+                context.route(
+                    re.compile(r".*/api/delivery/quote/?$"),
+                    handle_delivery_quote,
+                )
+                context.route(
                     re.compile(r".*/api/orders/?$"),
                     handle_create_order,
                 )
@@ -438,6 +501,52 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                 page.locator(
                     "#order-customer-observations"
                 ).fill("Prueba automatizada móvil.")
+
+                page.wait_for_function(
+                    """
+                    document.querySelector(
+                        "#delivery-destination-map"
+                    )?.classList.contains(
+                        "leaflet-container"
+                    )
+                    """
+                )
+
+                # La cotización debe estar oculta hasta seleccionar
+                # una ubicación y recibir un precio válido.
+                expect(
+                    page.locator(
+                        "#delivery-quote-summary"
+                    )
+                ).to_be_hidden()
+
+                # Seleccionar el punto de entrega en el mapa.
+                page.locator(
+                    "#delivery-destination-map"
+                ).click(
+                    position={
+                        "x": 180,
+                        "y": 130,
+                    }
+                )
+
+                # delivery.js utiliza un temporizador de 350 ms
+                # antes de solicitar la cotización.
+                # El reloj está pausado, por lo que debemos avanzarlo.
+                page.clock.fast_forward(350)
+
+                # Esperar la respuesta de cotización simulada.
+                expect(
+                    page.locator(
+                        "#delivery-quote-summary"
+                    )
+                ).to_be_visible()
+
+                expect(
+                    page.locator(
+                        "#delivery-quote-fee"
+                    )
+                ).to_contain_text("5.900")
 
                 page.locator("#order-submit").click()
 
@@ -694,6 +803,32 @@ def test_mobile_b2b_checkout_recovers_after_lost_response(app):
                     # Consultar seguimiento nunca debe volver a crear
                     # el pedido ni repetir el checkout.
                     assert len(order_requests) == 2
+
+                    assert len(delivery_quote_requests) >= 1
+
+                    first_payload = order_requests[0]["payload"]
+
+                    assert (
+                        first_payload["delivery_latitude"]
+                        is not None
+                    )
+
+                    assert (
+                        first_payload["delivery_longitude"]
+                        is not None
+                    )
+
+                    assert first_payload["delivery_latitude"] == (
+                        order_requests[1]["payload"][
+                            "delivery_latitude"
+                        ]
+                    )
+
+                    assert first_payload["delivery_longitude"] == (
+                        order_requests[1]["payload"][
+                            "delivery_longitude"
+                        ]
+                    )
 
                     assert not browser_errors, (
                         "Errores JavaScript:\n"

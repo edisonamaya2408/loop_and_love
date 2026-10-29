@@ -22,6 +22,8 @@ class FakeOrderService:
         observations,
         items,
         idempotency_key=None,
+        delivery_latitude=None,
+        delivery_longitude=None,
     ):
         self.create_calls.append(
             {
@@ -32,6 +34,8 @@ class FakeOrderService:
                 "observations": observations,
                 "items": items,
                 "idempotency_key": idempotency_key,
+                "delivery_latitude": delivery_latitude,
+                "delivery_longitude": delivery_longitude,
             }
         )
 
@@ -146,6 +150,8 @@ def test_create_order_returns_created_order(
                     "quantity": 2,
                 }
             ],
+            "delivery_latitude": 6.2542,
+            "delivery_longitude": -75.5812,
         },
     )
 
@@ -205,6 +211,8 @@ def test_create_order_returns_created_order(
                 }
             ],
             "idempotency_key": None,
+            "delivery_latitude": 6.2542,
+            "delivery_longitude": -75.5812,
         }
     ]
 

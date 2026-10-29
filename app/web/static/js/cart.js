@@ -784,9 +784,11 @@ function renderCart() {
 
 
     if (!hasItems) {
+        window.dispatchEvent(
+            new Event("loopandlove:cart-updated")
+        );
 
         refreshProductButtons();
-
         return;
     }
 
@@ -1036,6 +1038,10 @@ function renderCart() {
 
 
     refreshProductButtons();
+
+    window.dispatchEvent(
+        new Event("loopandlove:cart-updated")
+    );
 }
 
 

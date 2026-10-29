@@ -1646,6 +1646,172 @@
         }
       }
     },
+    "/api/admin/delivery-settings": {
+      "get": {
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Consulta la configuración de domicilios.",
+        "operationId": "adminGetDeliverySettings",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuración consultada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverySettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Actualiza la tarifa de domicilio.",
+        "operationId": "adminUpdateDeliverySettings",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliverySettingsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuración guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverySettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/delivery/config": {
+      "get": {
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Obtiene el centro público del mapa de domicilios.",
+        "operationId": "getPublicDeliveryConfig",
+        "responses": {
+          "200": {
+            "description": "Configuración pública disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicDeliveryConfigResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "503": {
+            "description": "El servicio de domicilio no está configurado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/quote": {
+      "post": {
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Calcula el precio estimado del domicilio.",
+        "operationId": "quoteDelivery",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cotización calculada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryQuoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "422": {
+            "description": "La dirección está fuera de cobertura.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "503": {
+            "description": "El servicio de domicilio no está configurado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users": {
       "get": {
         "operationId": "adminListUsers",
@@ -2876,7 +3042,9 @@
           "items",
           "total",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "subtotal",
+          "delivery_fee"
         ],
         "properties": {
           "id": {
@@ -2938,6 +3106,14 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "subtotal": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$"
+          },
+          "delivery_fee": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$"
           }
         }
       },
@@ -3133,7 +3309,9 @@
               {
                 "type": "object",
                 "required": [
-                  "status_history"
+                  "status_history",
+                  "delivery_distance_km",
+                  "delivery_billable_km"
                 ],
                 "properties": {
                   "status_history": {
@@ -3148,6 +3326,16 @@
                     "maxLength": 43,
                     "pattern": "^[A-Za-z0-9_-]{43}$",
                     "description": "Código secreto de seguimiento del pedido."
+                  },
+                  "delivery_distance_km": {
+                    "type": "string",
+                    "nullable": true,
+                    "pattern": "^\\d+\\.\\d{2}$"
+                  },
+                  "delivery_billable_km": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0
                   }
                 }
               }
@@ -3184,6 +3372,8 @@
           "phone",
           "city",
           "address",
+          "delivery_latitude",
+          "delivery_longitude",
           "items"
         ],
         "properties": {
@@ -3207,6 +3397,16 @@
             "type": "string",
             "maxLength": 2000,
             "nullable": true
+          },
+          "delivery_latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "delivery_longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
           },
           "items": {
             "type": "array",
@@ -3283,6 +3483,204 @@
               "email": {
                 "type": "string",
                 "format": "email"
+              }
+            }
+          }
+        }
+      },
+      "DeliverySettingsUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "origin_latitude",
+          "origin_longitude",
+          "public_map_center_latitude",
+          "public_map_center_longitude",
+          "base_fee",
+          "price_per_km",
+          "distance_factor",
+          "max_distance_km"
+        ],
+        "properties": {
+          "origin_latitude": {
+            "type": "string"
+          },
+          "origin_longitude": {
+            "type": "string"
+          },
+          "public_map_center_latitude": {
+            "type": "string"
+          },
+          "public_map_center_longitude": {
+            "type": "string"
+          },
+          "base_fee": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$"
+          },
+          "price_per_km": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d{2}$"
+          },
+          "distance_factor": {
+            "type": "string"
+          },
+          "max_distance_km": {
+            "type": "string"
+          }
+        }
+      },
+      "DeliverySettingsResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "id",
+              "origin_latitude",
+              "origin_longitude",
+              "public_map_center_latitude",
+              "public_map_center_longitude",
+              "base_fee",
+              "price_per_km",
+              "distance_factor",
+              "max_distance_km",
+              "configured",
+              "updated_at"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "origin_latitude": {
+                "type": "string",
+                "nullable": true
+              },
+              "origin_longitude": {
+                "type": "string",
+                "nullable": true
+              },
+              "public_map_center_latitude": {
+                "type": "string",
+                "nullable": true
+              },
+              "public_map_center_longitude": {
+                "type": "string",
+                "nullable": true
+              },
+              "base_fee": {
+                "type": "string"
+              },
+              "price_per_km": {
+                "type": "string"
+              },
+              "distance_factor": {
+                "type": "string"
+              },
+              "max_distance_km": {
+                "type": "string"
+              },
+              "configured": {
+                "type": "boolean"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "PublicDeliveryConfigResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "map_center_latitude",
+              "map_center_longitude",
+              "max_distance_km"
+            ],
+            "properties": {
+              "map_center_latitude": {
+                "type": "string"
+              },
+              "map_center_longitude": {
+                "type": "string"
+              },
+              "max_distance_km": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "DeliveryQuoteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        }
+      },
+      "DeliveryQuoteResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "delivery_fee",
+              "currency"
+            ],
+            "properties": {
+              "delivery_fee": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d{2}$"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "COP"
+                ]
               }
             }
           }

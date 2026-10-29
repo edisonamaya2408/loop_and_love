@@ -185,8 +185,20 @@ function buildAdminCustomerWhatsAppMessage(
     );
 
 
+    const subtotal = order.subtotal ??
+        items.reduce(
+            (sum, item) => (
+                sum + Number(item.line_total || 0)
+            ),
+            0
+        );
+
+    const deliveryFee = order.delivery_fee ?? 0;
+
     lines.push(
         "",
+        `*Subtotal productos:* ${formatCurrency(subtotal)}`,
+        `*Domicilio:* ${formatCurrency(deliveryFee)}`,
         `*Total:* ${formatCurrency(order.total)}`,
         "",
         "*Datos de entrega:*",
@@ -1380,6 +1392,22 @@ function renderOrderDetail(
             "admin-order-detail-total"
         );
 
+    const subtotalElement = getOrderDetailElement(
+        "admin-order-detail-subtotal"
+    );
+
+    const deliveryFeeElement = getOrderDetailElement(
+        "admin-order-detail-delivery-fee"
+    );
+
+    const deliveryDistanceElement = getOrderDetailElement(
+        "admin-order-detail-delivery-distance"
+    );
+
+    const deliveryBillableKmElement = getOrderDetailElement(
+        "admin-order-detail-delivery-billable-km"
+    );
+
     const observations =
         getOrderDetailElement(
             "admin-order-detail-observations"
@@ -1487,6 +1515,41 @@ function renderOrderDetail(
             formatCurrency(
                 order.total
             );
+    }
+
+    const itemsSubtotal = Array.isArray(order.items)
+        ? order.items.reduce(
+            (sum, item) => (
+                sum + Number(item.line_total || 0)
+            ),
+            0
+        )
+        : 0;
+
+    if (subtotalElement) {
+        subtotalElement.textContent = formatCurrency(
+            order.subtotal ?? itemsSubtotal
+        );
+    }
+
+    if (deliveryFeeElement) {
+        deliveryFeeElement.textContent = formatCurrency(
+            order.delivery_fee ?? 0
+        );
+    }
+
+    if (deliveryDistanceElement) {
+        deliveryDistanceElement.textContent =
+            order.delivery_distance_km == null
+                ? "No disponible"
+                : `${order.delivery_distance_km} km`;
+    }
+
+    if (deliveryBillableKmElement) {
+        deliveryBillableKmElement.textContent =
+            order.delivery_billable_km == null
+                ? ""
+                : `${order.delivery_billable_km} km cobrados`;
     }
 
     if (observations) {

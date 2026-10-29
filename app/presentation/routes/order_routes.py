@@ -1,4 +1,16 @@
 from flask import Blueprint, jsonify, request
+from decimal import Decimal
+
+from app.application.services.delivery_pricing_service import (
+    DeliveryPricingService,
+)
+from app.domain.exceptions import (
+    DeliveryOutsideCoverageError,
+    DeliverySettingsNotConfiguredError,
+)
+from app.infrastructure.database.repositories import (
+    SQLAlchemyDeliverySettingsRepository,
+)
 
 from app.application.services.order_service import (
     OrderService,
@@ -24,10 +36,32 @@ def _get_order_service():
     return OrderService(
         repository=SQLAlchemyOrderRepository(),
         product_repository=SQLAlchemyProductRepository(),
+        delivery_pricing_service=DeliveryPricingService(
+            SQLAlchemyDeliverySettingsRepository()
+        ),
     )
 
 
 def _order_to_dict(order):
+
+    subtotal = sum(
+        (
+            item.line_total
+            for item in order.items
+        ),
+        Decimal("0.00"),
+    )
+
+    delivery_fee = Decimal(
+        str(
+            getattr(
+                order,
+                "delivery_fee",
+                Decimal("0.00"),
+            )
+        )
+    )
+
     return {
         "id": order.id,
         "name": order.customer_name,
@@ -52,6 +86,8 @@ def _order_to_dict(order):
             for item in order.items
         ],
         "total": f"{order.total:.2f}",
+        "subtotal": f"{subtotal:.2f}",
+        "delivery_fee": f"{delivery_fee:.2f}",
         "created_at": (
             order.created_at.isoformat()
             if order.created_at
@@ -150,6 +186,12 @@ def create_order():
             idempotency_key=request.headers.get(
                 "Idempotency-Key"
             ),
+            delivery_latitude=data.get(
+                "delivery_latitude"
+            ),
+            delivery_longitude=data.get(
+                "delivery_longitude"
+            ),
         )
 
     except OrderIdempotencyConflictError as error:
@@ -162,6 +204,39 @@ def create_order():
                 },
             }
         ), 409
+
+    except DeliverySettingsNotConfiguredError as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "DELIVERY_NOT_CONFIGURED",
+                    "message": str(error),
+                },
+            }
+        ), 503
+
+    except DeliveryOutsideCoverageError as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "DELIVERY_OUT_OF_COVERAGE",
+                    "message": str(error),
+                },
+            }
+        ), 422
+
+    except ValueError as error:
+        return jsonify(
+            {
+                "success": False,
+                "error": {
+                    "code": "INVALID_ORDER_REQUEST",
+                    "message": str(error),
+                },
+            }
+        ), 400
 
     response_status = (
         200

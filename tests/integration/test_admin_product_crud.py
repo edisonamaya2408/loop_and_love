@@ -42,6 +42,41 @@ from app.infrastructure.database.repositories.order_repository_impl import (
     SQLAlchemyOrderRepository,
 )
 
+from app.application.services.delivery_pricing_service import (
+    DeliveryPricingService,
+)
+
+from app.presentation.routes import order_routes
+
+class FixedDeliveryPricingService:
+    """Cotización determinista para las pruebas de integración."""
+
+    def normalize_coordinates(
+        self,
+        latitude,
+        longitude,
+    ):
+        return DeliveryPricingService.normalize_coordinates(
+            latitude,
+            longitude,
+        )
+
+    def quote(
+        self,
+        latitude,
+        longitude,
+    ):
+        return {
+            "latitude": latitude,
+            "longitude": longitude,
+            "straight_distance_km": Decimal("1.20"),
+            "distance_km": Decimal("1.56"),
+            "billable_km": 2,
+            "delivery_fee": Decimal("5100.00"),
+            "base_fee": Decimal("3500.00"),
+            "price_per_km": Decimal("800.00"),
+            "distance_factor": Decimal("1.30"),
+        }
 
 def _unique_suffix():
     return uuid4().hex[:10]
@@ -874,9 +909,22 @@ def test_public_order_lifecycle_is_idempotent_and_trackable(
     auth_token,
     persisted_product,
     integration_session,
+    monkeypatch,
 ):
     idempotency_key = str(uuid4())
     order_id = None
+
+    order_service = OrderService(
+        repository=SQLAlchemyOrderRepository(),
+        product_repository=SQLAlchemyProductRepository(),
+        delivery_pricing_service=FixedDeliveryPricingService(),
+    )
+
+    monkeypatch.setattr(
+        order_routes,
+        "_get_order_service",
+        lambda: order_service,
+    )
 
     request_payload = {
         "name": "Cliente Flujo Completo",
@@ -890,6 +938,8 @@ def test_public_order_lifecycle_is_idempotent_and_trackable(
                 "quantity": 2,
             }
         ],
+        "delivery_latitude": "6.2542000",
+        "delivery_longitude": "-75.5812000",
     }
 
     headers = {

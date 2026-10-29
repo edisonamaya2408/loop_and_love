@@ -67,6 +67,7 @@ function auditActionLabel(action) {
         "order.status_changed": "Estado de pedido cambiado",
         "order.tracking_token_rotated": "Código de seguimiento regenerado",
         "order.whatsapp_notification_prepared": "Actualización por WhatsApp preparada",
+        "delivery.settings_updated": "Tarifa de domicilio actualizada",
     };
 
     return labels[action] || action || "Operación desconocida";

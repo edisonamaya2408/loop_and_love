@@ -367,6 +367,18 @@ def admin_orders_page():
     )
 
 
+@web_bp.get("/admin/delivery-settings")
+def admin_delivery_settings_page():
+    if _setup_required():
+        return redirect(
+            url_for("web.admin_setup")
+        )
+
+    return render_template(
+        "admin/delivery_settings.html"
+    )
+
+
 @web_bp.get("/admin/audit-logs")
 def admin_audit_logs_page():
     """Página de consulta de auditoría administrativa."""
