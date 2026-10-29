@@ -1,65 +1,325 @@
+/* ==================================================
+   LOOP & LOVE
+   CONFIGURACIÓN DE DOMICILIOS
+================================================== */
+
 .admin-delivery-form {
     display: grid;
     gap: 1rem;
+    padding: clamp(1.15rem, 2.5vw, 2rem);
+    min-width: 0;
 }
 
-.admin-delivery-form h2 {
-    margin: 0.8rem 0 0;
+/* --------------------------------------------------
+   SECCIONES
+-------------------------------------------------- */
+
+.admin-delivery-form > h2 {
+    margin: 1.25rem 0 0.15rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--admin-border);
+
+    color: var(--admin-brown);
+    font-size: clamp(1.25rem, 2vw, 1.65rem);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
 }
+
+.admin-delivery-form > h2:first-of-type {
+    margin-top: 0.2rem;
+}
+
+.admin-delivery-form > p:not(.admin-delivery-help) {
+    margin: 0 0 0.25rem;
+    color: var(--admin-text-soft);
+    line-height: 1.65;
+    font-size: 0.9rem;
+}
+
+/* --------------------------------------------------
+   CAMPOS
+-------------------------------------------------- */
 
 .admin-delivery-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 1.15rem;
+    min-width: 0;
 }
 
 .admin-delivery-grid > div {
     display: grid;
-    gap: 0.4rem;
+    align-content: start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.admin-delivery-grid label {
+    color: var(--admin-brown);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.4;
 }
 
 .admin-delivery-grid input {
     width: 100%;
-    min-height: 44px;
-}
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.75rem 0.9rem;
 
-.admin-delivery-map {
-    width: 100%;
-    min-height: 330px;
     border: 1px solid var(--admin-border);
     border-radius: 12px;
-    overflow: hidden;
+
+    background: #FFFCFA;
+    color: var(--admin-text);
+
+    font: inherit;
+    font-size: 0.9rem;
+
+    outline: none;
+
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        background-color 160ms ease;
 }
 
-.admin-delivery-help {
-    color: var(--admin-text-soft);
-    line-height: 1.6;
+.admin-delivery-grid input:hover:not(:disabled) {
+    border-color: var(--admin-rose);
 }
+
+.admin-delivery-grid input:focus {
+    border-color: var(--admin-rose-deep);
+    background: var(--admin-surface);
+
+    box-shadow:
+        0 0 0 4px rgba(209, 149, 142, 0.16);
+}
+
+.admin-delivery-grid input:disabled {
+    background: var(--admin-surface-soft);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* --------------------------------------------------
+   MAPAS LEAFLET
+-------------------------------------------------- */
+
+.admin-delivery-map {
+    position: relative;
+    z-index: 0;
+
+    /*
+       Evita que los controles y las capas internas
+       de Leaflet se superpongan a la barra superior.
+    */
+    isolation: isolate;
+
+    width: 100%;
+    height: clamp(300px, 31vw, 360px);
+    min-height: 300px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--admin-border);
+    border-radius: 16px;
+
+    background: var(--admin-surface-soft);
+
+    box-shadow:
+        0 5px 16px rgba(97, 68, 56, 0.06);
+}
+
+/* Apariencia uniforme de los controles del mapa. */
+
+.admin-delivery-map .leaflet-control-zoom {
+    overflow: hidden;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(63, 48, 42, 0.12);
+}
+
+.admin-delivery-map .leaflet-control-zoom a {
+    width: 36px;
+    height: 36px;
+    line-height: 34px;
+
+    background: var(--admin-surface);
+    color: var(--admin-brown);
+
+    border: 0;
+    font-weight: 800;
+}
+
+.admin-delivery-map .leaflet-control-zoom a:hover {
+    background: var(--admin-rose-soft);
+    color: var(--admin-brown-dark);
+}
+
+.admin-delivery-map .leaflet-control-attribution {
+    font-size: 0.65rem;
+}
+
+/* --------------------------------------------------
+   AYUDA
+-------------------------------------------------- */
+
+.admin-delivery-help {
+    margin: 0.1rem 0 0.5rem;
+    padding: 0.9rem 1rem;
+
+    border-left: 3px solid var(--admin-rose);
+    border-radius: 0 10px 10px 0;
+
+    background: var(--admin-surface-soft);
+    color: var(--admin-text-soft);
+
+    font-size: 0.84rem;
+    line-height: 1.65;
+}
+
+/* --------------------------------------------------
+   MENSAJES
+-------------------------------------------------- */
+
+#admin-delivery-message {
+    padding: 0.9rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+#admin-delivery-message[hidden] {
+    display: none !important;
+}
+
+#admin-delivery-message[data-type="error"] {
+    border-color: #E8B8B8;
+    background: #FFF0F0;
+    color: #A52F36;
+}
+
+#admin-delivery-message[data-type="success"] {
+    border-color: #C5DCCB;
+    background: #F0F8F1;
+    color: #356B49;
+}
+
+/* --------------------------------------------------
+   BOTÓN GUARDAR
+-------------------------------------------------- */
 
 .admin-delivery-actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+
+    margin-top: 0.75rem;
+    padding-top: 1.25rem;
+
+    border-top: 1px solid var(--admin-border);
 }
 
-#admin-delivery-message {
-    padding: 0.8rem;
-    border-radius: 8px;
+.admin-delivery-button {
+    min-width: 220px;
+    min-height: 48px;
+    padding: 0.8rem 1.25rem;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+
+    border: 1px solid transparent;
+    border-radius: 12px;
+
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 800;
+    text-align: center;
+
+    cursor: pointer;
+
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease,
+        opacity 160ms ease;
 }
 
-#admin-delivery-message[data-type="error"] {
-    color: #A52F36;
+.admin-delivery-button--primary {
+    background: var(--admin-brown);
+    color: var(--admin-surface);
+
+    box-shadow:
+        0 5px 12px rgba(97, 68, 56, 0.14);
 }
+
+.admin-delivery-button--primary:hover:not(:disabled) {
+    background: var(--admin-brown-dark);
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 7px 16px rgba(97, 68, 56, 0.2);
+}
+
+.admin-delivery-button:focus-visible {
+    outline: 3px solid var(--admin-rose);
+    outline-offset: 3px;
+}
+
+.admin-delivery-button:disabled {
+    opacity: 0.62;
+    cursor: wait;
+    transform: none;
+    box-shadow: none;
+}
+
+/* --------------------------------------------------
+   RESPONSIVE
+-------------------------------------------------- */
 
 @media (max-width: 640px) {
+    .admin-delivery-form {
+        gap: 0.9rem;
+        padding: 1rem;
+    }
+
+    .admin-delivery-form > h2 {
+        margin-top: 1rem;
+        font-size: 1.25rem;
+    }
+
     .admin-delivery-grid {
         grid-template-columns: minmax(0, 1fr);
+        gap: 0.9rem;
     }
 
     .admin-delivery-map {
-        min-height: 260px;
+        height: 270px;
+        min-height: 270px;
+        border-radius: 12px;
     }
 
-    .admin-delivery-actions button {
+    .admin-delivery-actions {
+        justify-content: stretch;
+    }
+
+    .admin-delivery-button {
         width: 100%;
+        min-width: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-delivery-grid input,
+    .admin-delivery-button {
+        transition: none;
     }
 }

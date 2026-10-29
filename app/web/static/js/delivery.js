@@ -15,6 +15,37 @@
         document.getElementById(id)
     );
 
+    function refreshMapSize() {
+        if (!state.map) {
+            return;
+        }
+
+        /*
+         * Esperar dos ciclos de renderizado para que el navegador
+         * aplique las dimensiones del contenedor del carrito.
+         */
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                const mapElement = element(
+                    "delivery-destination-map"
+                );
+
+                if (
+                    !state.map ||
+                    !mapElement ||
+                    mapElement.clientWidth === 0 ||
+                    mapElement.clientHeight === 0
+                ) {
+                    return;
+                }
+
+                state.map.invalidateSize({
+                    pan: false,
+                });
+            });
+        });
+    }
+
     function formatCOP(value) {
         const number = Number(value);
 
@@ -163,7 +194,7 @@
             if (
                 response.status === 422 ||
                 body?.error?.code ===
-                    "DELIVERY_OUT_OF_COVERAGE"
+                "DELIVERY_OUT_OF_COVERAGE"
             ) {
                 clearQuote();
 
@@ -178,7 +209,7 @@
             if (
                 response.status === 503 ||
                 body?.error?.code ===
-                    "DELIVERY_NOT_CONFIGURED"
+                "DELIVERY_NOT_CONFIGURED"
             ) {
                 clearQuote();
 
@@ -367,10 +398,8 @@
             }
         );
 
-        window.setTimeout(
-            () => state.map.invalidateSize(),
-            0
-        );
+        refreshMapSize();
+
     }
 
     async function initialize() {
@@ -473,7 +502,15 @@
 
     window.addEventListener(
         "loopandlove:cart-updated",
-        refreshCartSummary
+        () => {
+            refreshCartSummary();
+            refreshMapSize();
+        }
+    );
+
+    window.addEventListener(
+        "resize",
+        refreshMapSize
     );
 
     document.addEventListener(
