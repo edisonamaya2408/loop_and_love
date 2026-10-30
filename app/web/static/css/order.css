@@ -813,10 +813,20 @@
 ================================================== */
 
 .catalog-delivery-map {
+    /*
+     * Mantener todas las capas de Leaflet dentro
+     * del contexto visual del mapa.
+     */
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+
     width: 100%;
     min-height: 320px;
+
     border: 1px solid var(--color-border, #D9D2CC);
     border-radius: 12px;
+
     overflow: hidden;
     background: #F5F1ED;
 }
